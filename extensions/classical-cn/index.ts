@@ -3,7 +3,6 @@ import type {
 	ExtensionCommandContext,
 } from "@earendil-works/pi-coding-agent";
 import { getAgentDir } from "@earendil-works/pi-coding-agent";
-import { Type } from "typebox";
 import {
 	type Config,
 	DEFAULT_CONFIG,
