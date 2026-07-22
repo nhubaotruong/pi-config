@@ -1,0 +1,39 @@
+{
+  "colorSources": {
+    "starship": "terminal",
+    "editor": "terminal",
+    "userMessages": "terminal"
+  },
+  "features": {
+    "copyFriendly": true
+  },
+  "fixedEditor": {
+    "enabled": false
+  },
+  "contextStyle": "text+gauge",
+  "separator": "pipe",
+  "pathDisplay": {
+    "mode": "full"
+  },
+  "gitBranch": {
+    "maxLength": "full"
+  },
+  "icons": {
+    "mode": "nerd"
+  },
+  "footerSegments": {
+    "gitCounts": false,
+    "username": false,
+    "time": false,
+    "os": true,
+    "packageVersion": false,
+    "gitCommit": false,
+    "cost": true,
+    "tokens": true
+  },
+  "extensionStatuses": {
+    "placements": {
+      "magic-context": "right"
+    }
+  }
+}

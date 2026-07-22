@@ -1,0 +1,11 @@
+{
+  "enabled": true,
+  "visionModel": "openrouter/google/gemma-4-31b-it:free",
+  "autoHandoff": true,
+  "handoffModels": [],
+  "prewarmPastedImages": true,
+  "cacheMax": 50,
+  "maxDescriptionLines": 0,
+  "thinking": true,
+  "thinkingLevel": "high"
+}
