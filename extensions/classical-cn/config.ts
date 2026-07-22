@@ -1,6 +1,5 @@
 import { readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { getAgentDir } from "@earendil-works/pi-coding-agent";
 
 export const CONFIG_FILENAME = "classical-cn.json";
 
@@ -31,17 +30,6 @@ const EFFORT_LEVELS = [
 	"high",
 	"xhigh",
 ] as const;
-
-function clampInt(
-	value: unknown,
-	min: number,
-	max: number,
-	fallback: number,
-): number {
-	const n = typeof value === "number" ? value : Number(value);
-	if (!Number.isFinite(n)) return fallback;
-	return Math.min(max, Math.max(min, Math.round(n)));
-}
 
 function strOrUndef(value: unknown): string | undefined {
 	return typeof value === "string" && value.trim().length > 0
