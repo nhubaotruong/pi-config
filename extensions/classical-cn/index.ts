@@ -83,6 +83,9 @@ export default function classicalCnExtension(pi: ExtensionAPI) {
 
 		const classicalCn = event.message.content;
 
+		// Skip translation for very long messages — show raw Classical Chinese
+		if (classicalCn.length > 10000) return;
+
 		// Translate to English for display
 		const english = await translate(config, ctx, classicalCn, "classcn-to-en");
 		if (!english) return;

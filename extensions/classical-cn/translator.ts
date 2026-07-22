@@ -64,6 +64,7 @@ export async function translate(
 		method: "POST",
 		headers,
 		body: JSON.stringify(body),
+		signal: AbortSignal.timeout(15000),
 	});
 	if (!response.ok) return undefined;
 
