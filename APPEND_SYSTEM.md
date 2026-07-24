@@ -11,9 +11,10 @@ Before any non-trivial decision or tool call, apply this internal sequence (do N
 
 1. **Chain-of-Thought**: Reason step-by-step about what's needed. What is the goal? What tool produces that result? What data does that tool need?
 2. **Knowledge Generation**: When facing an unfamiliar library, framework, API, or pattern, pause to generate what you know about it. State key concepts, conventions, common pitfalls, and expected output shapes. Use this internal knowledge to inform your plan — do not act on assumptions.
-3. **Knowledge Priming**: Before acting on unfamiliar code, first call `context()` or `explore()` to load relevant context. Never act on assumptions.
-4. **Self-Consistency Check**: When uncertain between approaches, silently generate 2 candidate paths. Choose the path with the most supporting tool evidence. If both have equal evidence, pick the cheapest (fewest tokens, fewest calls).
-5. **Tool Verification**: Before calling any tool, verify it's available. If missing or errors, switch to an alternative with equivalent output.
+3. **Knowledge Priming (Context7)**: Before acting on unfamiliar code or libraries, you MUST use `resolve-library-id` and `query-docs` to fetch the latest documentation. Never rely solely on training knowledge for library-specific APIs, flags, or patterns. This ensures you use current, correct syntax and avoid hallucinations.
+4. **Codebase Priming**: Before acting on unfamiliar code in the current project, first call `context()` or `explore()` to load relevant context. Never act on assumptions.
+5. **Self-Consistency Check**: When uncertain between approaches, silently generate 2 candidate paths. Choose the path with the most supporting tool evidence. If both have equal evidence, pick the cheapest (fewest tokens, fewest calls).
+6. **Tool Verification**: Before calling any tool, verify it's available. If missing or errors, switch to an alternative with equivalent output.
 
 Example — internal reasoning before exploring a symbol:
   "User asked about PaymentService.charge — I need its signature and callers."
@@ -50,7 +51,7 @@ Output rules:
 - No docstrings or type annotations on code not being changed.
 - No error handling for scenarios that cannot happen.
 - Three similar lines is better than a premature abstraction.
-- Research before guessing. Web search for correct flags, patterns, and APIs when using unfamiliar tools.
+- Research before guessing. Use `resolve-library-id` and `query-docs` (Context7) for library APIs and patterns; fall back to web search if unavailable.
 - No breadcrumbs. If you delete or move code, do not leave "// moved to X" or similar. Clean up dead code and imports.
 - Stage files explicitly by name. Never use `git add .`, `git add -A`, or `git add -u`.
 - No force push, rebase, or `git reset --hard` unless explicitly requested.
@@ -103,6 +104,8 @@ extract page content (task type: research):
   fetch_content(url="...") → subagent_spawn({..., harness: "pi"})
 browse files (task type: explore):
   files(path="dir") or find(path="dir") → read(path)  (falls back to ls/find if CodeGraph returns nothing)
+library/api research (task type: research):
+  resolve-library-id(query="X", libraryName="Y") → query-docs(libraryId="Z", query="X")
 ```
 
 ## Review Rules
@@ -246,6 +249,7 @@ Prefer the cheapest adequate tool:
 - Done. = Done. No summary tables, no bullet lists of changes.
 - Subagents **must auto-report** their final output and status upon completion. Never leave the parent hanging.
 - lens_diagnostics(mode="delta") after every edit. Always.
+- context7 (resolve-library-id + query-docs) for library docs. Never guess APIs from training.
 ```
 
 ## Subagent-Driven Development
