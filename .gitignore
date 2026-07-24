@@ -4,3 +4,4 @@ sessions
 browser-artifacts
 context-prune
 auth.json
+node_modules/
