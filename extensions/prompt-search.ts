@@ -345,11 +345,12 @@ class PromptSearchComponent implements Container {
 		const contentRows = totalRows - 4; // header + 2 separators + footer
 
 		// Layout: left list + right preview
-		// Line structure: │ + leftW + │ + previewW + │ = w
-		// So leftW + previewW = w - 3
+		// Outer box: │ content │ = w, so content = w - 2
+		// List: │ left │ = leftW + 2, Preview: │ preview │ = previewW + 2
 		const showPreview = w >= 60;
-		const leftW = showPreview ? Math.floor((w - 3) / 2) : w - 2;
-		const previewW = showPreview ? w - 3 - leftW : 0;
+		// Content row: │ + leftW + │ + previewW + │ = w  =>  leftW + previewW = w - 2
+		const leftW = showPreview ? Math.floor((w - 2) / 2) : w - 2;
+		const previewW = showPreview ? w - 2 - leftW : 0;
 
 		// Header
 		const scopeLabel =
@@ -418,7 +419,7 @@ class PromptSearchComponent implements Container {
 					lines.push(`│${leftPart}│└${"─".repeat(previewInnerW)}┘`);
 				} else {
 					const previewIdx = i - 1;
-					const previewInnerW = previewW - 2; // -2 for │ and │
+					const previewInnerW = previewW - 1; // right │ only, left │ shared with list
 					let previewText =
 						previewIdx < previewLines.length
 							? truncateToWidth(previewLines[previewIdx], previewInnerW)
@@ -439,8 +440,8 @@ class PromptSearchComponent implements Container {
 
 		// Input line
 		const inputValue = this.input.getValue();
-		const inputDisplay = inputValue ? truncateToWidth(inputValue, w - 6) : "";
-		const inputLine = `│ > ${inputDisplay}${" ".repeat(Math.max(0, w - 6 - visibleWidth(inputDisplay)))}│`;
+		const inputDisplay = inputValue ? truncateToWidth(inputValue, w - 5) : "";
+		const inputLine = `│ > ${inputDisplay}${" ".repeat(Math.max(0, w - 5 - visibleWidth(inputDisplay)))}│`;
 		lines.push(inputLine);
 
 		// Footer
