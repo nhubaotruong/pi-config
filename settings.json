@@ -25,7 +25,8 @@
     "npm:pi-opencode-go-cache",
     "npm:@pi-unipi/notify",
     "npm:pi-hodor",
-    "npm:pi-commandcode-provider"
+    "npm:pi-commandcode-provider",
+    "npm:@tintinweb/pi-subagents"
   ],
   "lastChangelogVersion": "0.81.1",
   "theme": "dark",
@@ -52,8 +53,8 @@
       "write",
       "grep"
     ],
-    "imageMode": "auto",
+    "imageMode": "on",
     "syntaxValidation": "warn",
-    "timeoutMs": 120000
+    "timeoutMs": 300000
   }
 }
