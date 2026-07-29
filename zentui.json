@@ -28,7 +28,7 @@
     "os": true,
     "packageVersion": false,
     "gitCommit": false,
-    "cost": true,
+    "cost": false,
     "tokens": true
   },
   "extensionStatuses": {

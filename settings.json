@@ -3,7 +3,6 @@
     "npm:@ff-labs/pi-fff",
     "npm:pi-mcp-adapter",
     "npm:pi-lens",
-    "npm:pi-readseek",
     "npm:pi-agent-browser-native",
     "npm:cc-safety-net",
     "npm:@juicesharp/rpiv-ask-user-question",
@@ -26,9 +25,11 @@
     "npm:@pi-unipi/notify",
     "npm:pi-hodor",
     "npm:pi-commandcode-provider",
-    "npm:@tintinweb/pi-subagents"
+    "npm:@tintinweb/pi-subagents",
+    "npm:pi-hashline-edit",
+    "npm:pi-extension-nvidia-nim"
   ],
-  "lastChangelogVersion": "0.81.1",
+  "lastChangelogVersion": "0.82.1",
   "theme": "dark",
   "showHardwareCursor": true,
   "outputPad": 0,
@@ -36,8 +37,8 @@
   "enableInstallTelemetry": false,
   "defaultProjectTrust": "always",
   "defaultThinkingLevel": "high",
-  "defaultProvider": "commandcode",
-  "defaultModel": "xiaomi/mimo-v2.5",
+  "defaultProvider": "minimax",
+  "defaultModel": "MiniMax-M3",
   "hideThinkingBlock": true,
   "editorPaddingX": 1,
   "compaction": {
@@ -45,16 +46,5 @@
     "reserveTokens": 16384,
     "keepRecentTokens": 64000
   },
-  "showCacheMissNotices": false,
-  "readseek": {
-    "replacedTools": [
-      "read",
-      "edit",
-      "write",
-      "grep"
-    ],
-    "imageMode": "on",
-    "syntaxValidation": "warn",
-    "timeoutMs": 300000
-  }
+  "showCacheMissNotices": false
 }
