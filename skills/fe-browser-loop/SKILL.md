@@ -39,3 +39,54 @@ Load this skill when ANY of the following fire:
 
 If NONE of those fire, this skill is not applicable — exit and
 return to normal flow.
+
+## Trigger detection
+
+This skill auto-loads when ANY of these match the user task or
+tool result context.
+
+### Keyword triggers (user message)
+
+```
+ui, ux, bug, visual, layout, render, rendered, rendering,
+hydration, style, styling, styles, css, scss, styled,
+browser, screenshot, snapshot, dom, responsive, viewport,
+mobile, tablet, desktop, breakpoint, flex, grid,
+tailwind, component, page, route, link, button, modal,
+click, hover, focus, scroll, animation, transition,
+navigation, nav, menu, dropdown, form, input, validation,
+error message, broken, doesn't work, not showing, missing,
+flicker, jank, layout shift, hydration mismatch
+```
+
+### File-path triggers
+
+```
+src/components/, src/pages/, src/app/, src/routes/, src/views/,
+src/features/, src/screens/, src/ui/, src/widgets/, src/layouts/,
+*.tsx,*.jsx, *.vue,*.svelte, *.astro,*.mdx,
+*.css, *.scss, *.sass, *.less, *.module.css,
+public/index.html, app.html, index.html,
+next.config.*, vite.config.*, tailwind.config.*, postcss.config.*
+```
+
+### Task-description triggers
+
+```
+frontend, frontend bug, FE bug, web app, website, site,
+landing page, dashboard, UI, UX, view, screen,
+component, page, form, modal, dialog, sidebar, navbar, header, footer
+```
+
+### Negative triggers (deliberately do NOT load)
+
+- Pure backend / API / DB / type / state / utils work, even in a
+  frontend repo
+- Non-web tasks (mobile native, desktop, CLI, infra)
+- Pure logic edits to functions with no DOM impact
+- Test-file-only edits to unit tests (integration/E2E tests still
+  trigger)
+
+If the user message, file path, and task description all lack any
+positive trigger AND any negative trigger applies, this skill
+should not load. Return to normal flow.
