@@ -25,7 +25,7 @@ You can customize the model and reasoning level used for name generation.
 
 Show current settings:
 
-```
+```text
 
 /auto-name:setting
 
@@ -33,7 +33,7 @@ Show current settings:
 
 Set a specific model (must be `provider/model-id` format):
 
-```
+```text
 
 /auto-name:setting model anthropic/claude-sonnet-4-20250514
 
@@ -41,7 +41,7 @@ Set a specific model (must be `provider/model-id` format):
 
 Set reasoning level (affects name generation quality vs speed):
 
-```
+```text
 
 /auto-name:setting thinking minimal
 

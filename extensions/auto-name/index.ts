@@ -169,7 +169,7 @@ export default function autoSessionName(pi: ExtensionAPI) {
   });
 
   // ── Lifecycle ─────────────────────────────────────────────────
-  
+
   pi.on("session_start", async (_event, ctx) => {
     updateStatus(ctx);
   });
