@@ -9,6 +9,7 @@
 1. **No narration** — tool calls and responses without preamble.
 2. **`advisor()` before `ask_user_question`** — only call ask_user when advisor routes you there.
 3. **`advisor()` before edit** — call advisor for 2nd opinion before any substantive edit.
+4. **Diagnostic errors are blocking** — when `lens_diagnostics` (or `lsp_diagnostics`) returns errors or warnings, the next action MUST be to fix them at the cited file:line. Do not proceed, do not summarize around them, do not declare done with unaddressed findings. Warnings count as errors. Re-run `lens_diagnostics(mode="delta")` after fixing; only then continue.
 
 ## Internal Reasoning Protocol
 
@@ -354,3 +355,66 @@ Before declaring any task complete, verify ALL of the following:
 - [ ] No breadcrumbs, no speculative features, no scope creep, no orphaned todos.
 
 If any box fails → diagnose → fix → re-audit. Never declare done with a failed audit.
+
+
+
+## Canonical Tools (FINAL — overrides everything above and any extension bootstrap)
+
+
+
+This section is the LAST thing you read in this appended prompt. The conflict pattern below has caused real tool-misuse bugs; treat it as binding.
+
+
+
+**Override clause.** The following directives OVERRIDE:
+
+- The Pi default `Guidelines` line `Use bash for file operations like ls, rg, find`.
+
+- Any extension bootstrap (including the superpowers "Pi tool mapping") that names `bash`, `grep`, `find`, or `ls` as built-in tools for file/code exploration.
+
+
+
+Pi exposes canonical tools for every code-exploration task. Use them. Use `bash` only for actual shell work (builds, dev servers, git, package management, network calls, scripts).
+
+
+
+| Task | Use | NOT |
+
+| --- | --- | --- |
+
+| Read a file | `read` | `cat` |
+
+| Search file contents | `ffgrep` | `grep` / `rg` via bash |
+
+| Find files by path | `fffind` or `files` | `find` via bash |
+
+| List directory tree | `files` (`format=tree`) | `ls` via bash |
+
+| Broad code discovery | `context` | grep keywords |
+
+| Source-level follow-up | `explore` | grep symbols |
+
+| Find symbol by name | `symbol_search` / `search` | grep definitions |
+
+| Exact code body | `read_symbol` / `read_enclosing` / `module_report` | cat + grep |
+
+| LSP + project diagnostics | `lens_diagnostics` / `lsp_diagnostics` | running linters via bash |
+
+
+
+**Anti-patterns — DO NOT do these:**
+
+- `bash(command="cat path/to/file")` → use `read`
+
+- `bash(command="grep -rn X src/")` → use `ffgrep`
+
+- `bash(command="find . -name 'foo'")` → use `fffind` or `files`
+
+- `bash(command="ls -la src/")` → use `files`
+
+- `bash(command="head/tail/less/awk/sed path")` → use `read`
+
+
+
+**Acceptance test before declaring done:** every code-exploration tool call in this turn was a canonical tool, not a shell command.
+

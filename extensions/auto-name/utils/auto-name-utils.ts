@@ -8,10 +8,16 @@ import * as path from "node:path";
 // ── Constants ────────────────────────────────────────────────────────────────
 
 /** Must match subagent/session.ts:SUBAGENT_SESSION_DIR */
-export const SUBAGENT_SESSION_DIR = path.join(os.homedir(), ".pi", "agent", "sessions", "subagents");
+export const SUBAGENT_SESSION_DIR = path.join(
+	os.homedir(),
+	".pi",
+	"agent",
+	"sessions",
+	"subagents",
+);
 
 export const NAME_SYSTEM_PROMPT =
- "Analyze the user's message and extract the session's purpose as a single line in Title Case, 2–4 words, ≤30 characters. Output only the purpose text — no explanations, no surrounding punctuation, no quotes.";
+	"Analyze the user's message and extract the session's purpose as a single line in Title Case, 2–4 words, ≤30 characters. Output only the purpose text — no explanations, no surrounding punctuation, no quotes.";
 
 /** Max chars for the user message sent to the LLM. */
 export const MAX_MESSAGE_LENGTH = 500;
@@ -31,32 +37,41 @@ export const SUCCESSFUL_STOP_REASON = "stop";
  * Check if a session file path belongs to the subagent sessions directory.
  * Returns true if the path starts with SUBAGENT_SESSION_DIR.
  */
-export function isSubagentSessionPath(sessionFilePath: string | undefined): boolean {
- if (!sessionFilePath) return false;
- return (
-  sessionFilePath.startsWith(SUBAGENT_SESSION_DIR + path.sep) ||
-  sessionFilePath.startsWith(`${SUBAGENT_SESSION_DIR}/`)
- );
+export function isSubagentSessionPath(
+	sessionFilePath: string | undefined,
+): boolean {
+	if (!sessionFilePath) return false;
+	return (
+		sessionFilePath.startsWith(SUBAGENT_SESSION_DIR + path.sep) ||
+		sessionFilePath.startsWith(`${SUBAGENT_SESSION_DIR}/`)
+	);
 }
 
 /**
  * Safely extract session file path from an ExtensionContext-like object.
  * Returns undefined if extraction fails.
  */
-export function extractSessionFilePath(sessionManager: unknown): string | undefined {
- try {
-  if (sessionManager && typeof sessionManager === "object" && "getSessionFile" in sessionManager) {
-   const getSessionFile = (sessionManager as Record<string, unknown>).getSessionFile;
-   if (typeof getSessionFile === "function") {
-    const raw = String(getSessionFile() ?? "");
-    const cleaned = raw.replace(/[\r\n\t]+/g, "").trim();
-    return cleaned || undefined;
-   }
-  }
- } catch {
-  // Ignore errors
- }
- return undefined;
+export function extractSessionFilePath(
+	sessionManager: unknown,
+): string | undefined {
+	try {
+		if (
+			sessionManager &&
+			typeof sessionManager === "object" &&
+			"getSessionFile" in sessionManager
+		) {
+			const getSessionFile = (sessionManager as Record<string, unknown>)
+				.getSessionFile;
+			if (typeof getSessionFile === "function") {
+				const raw = String(getSessionFile() ?? "");
+				const cleaned = raw.replace(/[\r\n\t]+/g, "").trim();
+				return cleaned || undefined;
+			}
+		}
+	} catch {
+		// Ignore errors
+	}
+	return undefined;
 }
 
 /**
@@ -64,8 +79,10 @@ export function extractSessionFilePath(sessionManager: unknown): string | undefi
  * Normalizes whitespace and clips to MAX_STATUS_CHARS.
  */
 export function formatNameStatus(name: string): string {
- const singleLine = name.replace(/\s+/g, " ").trim();
- return singleLine.length > MAX_STATUS_CHARS ? `${singleLine.slice(0, MAX_STATUS_CHARS - 1)}…` : singleLine;
+	const singleLine = name.replace(/\s+/g, " ").trim();
+	return singleLine.length > MAX_STATUS_CHARS
+		? `${singleLine.slice(0, MAX_STATUS_CHARS - 1)}…`
+		: singleLine;
 }
 
 /**
@@ -73,7 +90,7 @@ export function formatNameStatus(name: string): string {
  * Truncates to MAX_MESSAGE_LENGTH.
  */
 export function buildNameContext(userMessage: string): string {
- return `User message: ${userMessage.slice(0, MAX_MESSAGE_LENGTH)}`;
+	return `User message: ${userMessage.slice(0, MAX_MESSAGE_LENGTH)}`;
 }
 
 /**
@@ -81,19 +98,24 @@ export function buildNameContext(userMessage: string): string {
  * Only fully completed responses should be used for session naming.
  */
 export function isSuccessfulResult(stopReason: string | undefined): boolean {
- return stopReason === SUCCESSFUL_STOP_REASON;
+	return stopReason === SUCCESSFUL_STOP_REASON;
 }
 
 /**
  * Extract the session name text from an LLM AssistantMessage-like result.
  * Filters to text content, joins, trims, and clips to MAX_NAME_LENGTH.
  */
-export function extractNameFromResult(content: ReadonlyArray<{ type: string; text?: string }>): string {
- const text = content
-  .filter((c): c is { type: "text"; text: string } => c.type === "text" && typeof c.text === "string")
-  .map((c) => c.text)
-  .join("")
-  .trim();
+export function extractNameFromResult(
+	content: ReadonlyArray<{ type: string; text?: string }>,
+): string {
+	const text = content
+		.filter(
+			(c): c is { type: "text"; text: string } =>
+				c.type === "text" && typeof c.text === "string",
+		)
+		.map((c) => c.text)
+		.join("")
+		.trim();
 
- return text.slice(0, MAX_NAME_LENGTH);
+	return text.slice(0, MAX_NAME_LENGTH);
 }

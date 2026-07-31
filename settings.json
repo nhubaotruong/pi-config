@@ -26,8 +26,9 @@
     "npm:pi-hodor",
     "npm:pi-commandcode-provider",
     "npm:@tintinweb/pi-subagents",
-    "npm:pi-hashline-edit",
-    "npm:pi-extension-nvidia-nim"
+    "npm:pi-extension-nvidia-nim",
+    "npm:@realvendex/pi-token-router",
+    "npm:pi-hashline-edit-pro"
   ],
   "lastChangelogVersion": "0.82.1",
   "theme": "dark",
@@ -36,14 +37,14 @@
   "quietStartup": true,
   "enableInstallTelemetry": false,
   "defaultProjectTrust": "always",
-  "defaultThinkingLevel": "high",
+  "defaultThinkingLevel": "medium",
   "defaultProvider": "minimax",
   "defaultModel": "MiniMax-M3",
   "hideThinkingBlock": true,
   "editorPaddingX": 1,
   "compaction": {
     "enabled": true,
-    "reserveTokens": 16384,
+    "reserveTokens": 600000,
     "keepRecentTokens": 64000
   },
   "showCacheMissNotices": false
