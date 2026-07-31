@@ -156,6 +156,7 @@ Apply minimal code change. Standard Pi rules still apply:
 
 No `browser-goblin` tools needed here — pure code work. Resist
 the urge to verify mid-edit; verification belongs in Step 5.
+
 ### Step 5 — Verify (systematic case derivation + assertions)
 
 **Three principles replace "look at the screenshot":**
@@ -313,3 +314,78 @@ open + close modal 20x (memory leak)
 rapid-fire clicks (debounce check)
 ```
 
+**5.3 Run discipline (what's mandatory)**
+
+```
+MUST  always:
+
+- At least 1 happy-path case (D1 valid input + D5 primary viewport + D6 click)
+- All D4 cases for any network call touched
+- All D2 cases for any state machine touched
+- All D5 viewports if task touches layout / responsive
+
+SHOULD by task type:
+
+- Bug fix       → original repro + D2 stale + D4 5xx
+- New feature   → D1 all boundaries + D6 keyboard + D7 a11y baseline
+- UI polish     → D5 all viewports + D7 focus + D9 perf snapshot
+- Refactor      → D2 reload + D2 concurrent + D3 role coverage
+- Auth change   → all D3 cases
+- i18n change   → all D8 cases
+
+NICE (run if time / user requests):
+
+- D9 perf deep dives
+- D8 full locale matrix
+- D6 multi-tab races beyond 2 tabs
+
+```
+
+**5.4 Per case: real interaction + assertion**
+
+```
+For each generated case:
+
+  1. Navigate to relevant URL via browser_open / browser_reload
+  2. browser_snapshot() → get refs
+  3. Execute real interaction sequence:
+       browser_click(@eN) / browser_fill(@eN, "value") /
+       browser_press("Enter"|"Tab"|"Escape") /
+       browser_wait(text="expected", mode="text") or
+       browser_wait(target="@eN", state="visible")
+  4. Assert state (must pass all):
+       ✓ browser_console: zero NEW errors vs baseline
+       ✓ browser_errors: zero NEW page errors
+       ✓ browser_network: zero NEW 4xx/5xx (or expected 2xx)
+       ✓ browser_snapshot: expected text/ref present
+       ✓ browser_screenshot: visual sanity for layout/visual tasks
+       ✓ browser_eval (sparingly): computed style / state value when needed
+  5. Record: case name, interaction trace, assertion results
+
+```
+
+**5.5 Consistency checks**
+
+For tasks touching state, persistence, or shared layouts:
+
+```
+A. Repeat the same flow 2x on the same viewport
+   → assert identical post-state (text, network calls, console)
+B. Repeat across desktop + tablet + mobile
+   → assert same content / different layout (no broken reflow)
+C. browser_reload after the fix
+   → assert state persists or resets as expected
+D. browser_back / browser_forward on SPA flows
+   → assert URL and snapshot match expectations
+E. Open fresh session (browser_close + browser_open) for state-leak bugs
+
+```
+
+**5.6 Pass/fail gate**
+
+- ALL non-waived MUST cases must pass all 6 assertions (5.4)
+- ALL consistency checks (5.5) that apply to the task type must pass
+- Any failed case → BLOCK task complete, return to Step 4 with evidence
+- Skill outputs a final verify report (see "Report format" below)
+- SHOULDs and NICEs may be waived per §Skip-override rules;
+  un-waivered SHOULDs block PASS verdict
