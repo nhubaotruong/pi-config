@@ -389,3 +389,82 @@ E. Open fresh session (browser_close + browser_open) for state-leak bugs
 - Skill outputs a final verify report (see "Report format" below)
 - SHOULDs and NICEs may be waived per §Skip-override rules;
   un-waivered SHOULDs block PASS verdict
+
+## Skip-override rules
+
+Every MUST case from Step 5 can be skipped, but only with explicit
+evidence + user approval. No silent skipping.
+
+| ID | Skip                                  | Evidence required                                                              | Approval required                                       |
+| -- | ------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------- |
+| S1 | User explicitly says "skip browser"   | direct quote in current or prior message                                       | none — already explicit                                 |
+| S2 | No live URL + no dev script in repo   | `browser_open` returns connection refused / DNS failure / HTTP 4xx-5xx on 3 sequential URLs; no `dev`/`start`/`serve` in `package.json`; no static fallback viable | `ask_user_question` with reason                         |
+| S3 | Browser tools disabled                | `/browser-tools core` returns error or tools missing                           | none — environment blocks loop                          |
+| S4 | Pure non-FE edit                      | no `.tsx`/`.css`/etc. edited; trigger guardrail (shouldn't fire)               | none — trigger guardrail                                |
+| S5 | No code change made (analysis-only)   | zero file edits in this turn                                                   | none — no fix to verify                                 |
+| S6 | Same surface verified green recently  | artifact manifest < 30 min old, same surface (same component/route IDs), same triggering task description (exact string match or fuzzy ≥0.85 similarity) | `ask_user_question`: "Reuse verify from `<timestamp>`?" |
+| S7 | User provides pre-verified evidence   | user pastes screenshot / artifact path / "I just checked it works"             | `ask_user_question`: "Trust user's evidence for this case?" |
+| S8 | Authenticated flow with no test acct  | browser-auth skill reports no viable auth path                                 | `ask_user_question`: "Auth flow blocked, continue without auth-gated cases?" |
+| S9 | CI / non-interactive environment      | no TTY, `PI_NONINTERACTIVE=1` or similar                                       | none — environment blocks loop                          |
+
+### Approval workflow
+
+For skips requiring `ask_user_question`:
+
+```
+ask_user_question(
+  question: "Skip browser verification because <reason>?"
+  options:
+    - "Yes, skip and document waiver"  [recommended if evidence is solid]
+    - "No, attempt verify anyway"      [fall through to Step 5 normally]
+    - "Reduce scope to <subset>"       [user picks partial coverage]
+)
+```
+
+Each approval is recorded in the final report's "Waivers" section.
+
+### Report format
+
+```
+=== fe-browser-loop report ===
+Task: <description>
+Surfaces: <list>
+
+Cases run: <count by MUST/SHOULD/NICE>
+  ✓ <case>: <n>/<n> assertions
+  ✗ <case>: <assertion that failed>
+  ...
+
+Consistency:
+  ✓ / ✗ <check>
+
+Console delta: <+N new errors, 0 expected>
+Network delta:  <+N new 4xx/5xx, expected <M>>
+
+Waivers:
+  S2: dev server unreachable — user approved
+  S7: user provided screenshot evidence — user approved
+  ...
+
+Artifacts: ~/.pi/agent/browser-artifacts/fe-loop/<timestamp>/
+Verdict: PASS / FAIL / PASS-WITH-WAIVERS
+```
+
+`PASS-WITH-WAIVERS` is valid when:
+
+- All non-waived MUST cases pass
+- All SHOULD cases pass (or waived)
+- Waivers are user-approved
+- No unaddressed failures
+
+`FAIL` blocks task completion regardless of other work done.
+
+### Anti-patterns (skill explicitly forbids)
+
+- ❌ Silent skip with no waiver recorded
+- ❌ "I think it works" without any browser interaction
+- ❌ Reading console output without clicking through the flow first
+- ❌ Skipping because "the change is small" (size is not evidence)
+- ❌ Skipping reload-persistence check on state-touching changes
+- ❌ Skipping mobile viewport because "user didn't ask for mobile"
+  (responsive is the user's expectation unless they say otherwise)
