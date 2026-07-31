@@ -468,3 +468,104 @@ Verdict: PASS / FAIL / PASS-WITH-WAIVERS
 - ❌ Skipping reload-persistence check on state-touching changes
 - ❌ Skipping mobile viewport because "user didn't ask for mobile"
   (responsive is the user's expectation unless they say otherwise)
+
+## Dev-server auto-detect (with confirmation)
+
+**Detection algorithm (skill mandates):**
+
+```
+1. Search repo for package.json scripts (priority order):
+     dev, start, serve, develop, vite, next dev, ng serve,
+     npm run dev, pnpm dev, yarn dev
+   Also check:
+     - index.html at root (static site, no server needed)
+     - dist/, build/, out/ directories (built site, serve with python -m http.server or similar)
+     - Makefile targets: dev, serve, start
+     - docker-compose.yml service marked "dev" / "app"
+
+2. If dev script found:
+   ask_user_question(
+     question: "No live URL detected. Start '<script>' via bg_start?"
+     options:
+       - "Yes, start it and wait for ready"  [recommended]
+       - "No, I'll provide a URL"
+       - "No, skip browser verification (waiver S2)"
+   )
+
+3. If yes:
+   bg_start(command=<script>, title="fe-loop dev server")
+   Poll URL with curl/http until 200 OR timeout 60s
+   On timeout: ask_user_question (retry / different URL / skip)
+
+4. If no script found:
+   ask_user_question(
+     question: "No dev script found. Provide a URL or skip verification?"
+     options:
+       - "I'll provide a URL"
+       - "Skip browser verification (waiver S2)"
+       - "Serve static build with python -m http.server"
+   )
+```
+
+**Defaults & env overrides:**
+
+- `PI_FE_BROWSER_LOOP_DEV_TIMEOUT=60` (seconds)
+- `PI_FE_BROWSER_LOOP_AUTO_START=false` (default: confirm before
+  starting; user opts into silent)
+- Poll: `curl -sf -o /dev/null -w "%{http_code}" <url>` every 2s
+
+**Don't:**
+
+- Start the dev server if a healthy server is already responding on
+  a candidate URL
+- Reuse a stale `bg_start` terminal from prior tasks without
+  verifying it's still alive
+- Spawn `npm install` automatically (out of scope; prompt user)
+
+## Bundled skill cross-references
+
+This umbrella skill enforces the loop and owns the workflow. For
+deep how-to on specific workflows, load the matching bundled
+`browser-goblin` skill:
+
+| Sub-workflow                                  | Load this skill         |
+| --------------------------------------------- | ----------------------- |
+| E2E flow testing, regression checks           | `browser-testing`       |
+| JS errors, hydration, network tracing, debug  | `browser-debugging`     |
+| Visual polish, responsive screenshots, a11y   | `browser-visual-qa`     |
+| Login flows, sessions, profile reuse, state   | `browser-auth`          |
+
+Always load this `fe-browser-loop` skill first; the bundled skills
+provide the deep patterns, this skill provides the loop discipline.
+
+## Error handling
+
+| Scenario                                   | Behavior                                                                                                       |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| `browser_open` URL fails                   | Retry once with `/` appended; if still fails, fall through to dev-server detect; if still nothing, offer S2 waiver |
+| Dev server timeout                         | `ask_user_question`: retry / different URL / skip (S2)                                                         |
+| Mid-flow console error appears post-edit   | Add to "Console delta" in report; BLOCK verdict; agent returns to Step 4                                       |
+| Browser tools disabled mid-task            | Use S3 waiver; report shows partial verify; verdict = PASS-WITH-WAIVERS                                        |
+| Auth flow has no test account              | S8 waiver; auth-gated cases (D3) skipped; report documents                                                     |
+| `browser_set_viewport` preset unrecognized  | Fall back to explicit width/height with documented values                                                      |
+| Agent overload: too many cases to run      | Run all MUST first; SHOULD if time; NICE only if user requests. Document skipped NICE in report.               |
+| Same task triggers skill repeatedly        | Track surface IDs in artifact manifest; S6 waiver offered if same surface verified < 30 min ago               |
+
+## Edge cases
+
+- **Skill loads but trigger was wrong** — skill self-checks against
+  the "Negative triggers" list on load; if pure non-FE work is
+  detected, skill prints "fe-browser-loop loaded but trigger not
+  applicable; exiting" and returns to normal flow.
+- **Multiple surfaces in one task** — Step 5 derives cases for each
+  surface; report lists per-surface results.
+- **Cross-repo frontend work** (monorepo) — skill runs per package;
+  surfaces list scoped to the package containing the edited files.
+- **Pre-existing baseline console errors** — recorded as baseline;
+  "new errors" delta is what matters, not absolute count.
+- **Tool result mentions FE keywords but actual work is unrelated**
+  — trigger fires; Step 1 self-check confirms no dev URL / no FE
+  files touched → S4 exit path.
+- **Session interrupted mid-loop** — artifact manifest on disk
+  records last completed step; resume continues from there if user
+  re-engages.
