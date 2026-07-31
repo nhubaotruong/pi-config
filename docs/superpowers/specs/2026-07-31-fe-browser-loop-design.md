@@ -1,3 +1,5 @@
+# fe-browser-loop — Frontend Work Browser-Verification Skill
+
 **Date:** 2026-07-31
 
 **Status:** Validated (V1-V9 execution pending interactive run)
