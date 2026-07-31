@@ -90,3 +90,42 @@ component, page, form, modal, dialog, sidebar, navbar, header, footer
 If the user message, file path, and task description all lack any
 positive trigger AND any negative trigger applies, this skill
 should not load. Return to normal flow.
+
+## The 5-step loop
+
+Every trigger fires this loop. Skip rules are documented in the
+"Skip-override rules" section below — no silent skipping.
+
+### Step 1 — Open
+
+```
+1. browser_open(url=<dev_url>)
+   - If no URL: detect dev script (package.json "dev"|"start"|"serve")
+     and ask_user_question: "Start <script> via bg_start?"
+     If yes → bg_start, wait for HTTP 200, browser_open
+     If no → ask_user_question for URL
+     If neither → use skip-override "no live URL" (S2)
+2. If auth needed → load browser-auth skill, follow it
+3. Note session id for later steps
+```
+
+The dev-server auto-detect algorithm is documented in the
+"Dev-server auto-detect" section below.
+
+### Step 2 — Baseline
+
+```
+1. browser_set_viewport(preset="desktop")  (or current viewport)
+2. browser_screenshot(
+     path=~/.pi/agent/browser-artifacts/fe-loop/baseline-<timestamp>.png,
+     full=true)
+3. browser_snapshot() → store snapshot text for diff comparison
+4. If multi-viewport task (responsive, mobile-check) →
+   repeat for tablet + mobile, save as baseline-{viewport}.png
+5. browser_console(clear=true) and browser_errors(clear=true)
+   → record baseline console/error state
+```
+
+The `<timestamp>` placeholder is an ISO-8601 UTC string
+(`date -u +%Y%m%dT%H%M%SZ`) — use it consistently across Steps 2,
+3, and 5 so artifacts can be cross-referenced.
