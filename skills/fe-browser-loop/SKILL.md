@@ -129,3 +129,30 @@ The dev-server auto-detect algorithm is documented in the
 The `<timestamp>` placeholder is an ISO-8601 UTC string
 (`date -u +%Y%m%dT%H%M%SZ`) — use it consistently across Steps 2,
 3, and 5 so artifacts can be cross-referenced.
+
+### Step 3 — Reproduce / understand
+
+Branch by task type:
+
+- **User reports a bug** → reproduce user flow with
+  `browser_snapshot` + `browser_click` / `browser_fill`, then
+  `browser_console` / `browser_errors` / `browser_network` to
+  capture evidence
+- **User asks new feature** → `browser_snapshot` current relevant
+  page, identify integration points
+- **User asks UI polish** → baseline screenshots are the reference;
+  no repro needed, skip straight to Step 4
+
+Record evidence under
+`~/.pi/agent/browser-artifacts/fe-loop/evidence-<timestamp>/`.
+
+### Step 4 — Edit
+
+Apply minimal code change. Standard Pi rules still apply:
+
+- `context()` / `explore()` before edits
+- `lens_diagnostics(delta)` after each edit
+- Subagent for ≥3 file edits
+
+No `browser-goblin` tools needed here — pure code work. Resist
+the urge to verify mid-edit; verification belongs in Step 5.
