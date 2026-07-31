@@ -11,7 +11,6 @@ description: |
   systematic case derivation across 9 dimensions and user-waivered
   skip rules. Skip only with explicit user override or when no
   live URL exists.
-allowed-tools: Bash(agent-browser:*), Bash(npx agent-browser:*)
 ---
 
 # fe-browser-loop
@@ -47,7 +46,7 @@ tool result context.
 
 ### Keyword triggers (user message)
 
-```
+```text
 ui, ux, bug, visual, layout, render, rendered, rendering,
 hydration, style, styling, styles, css, scss, styled,
 browser, screenshot, snapshot, dom, responsive, viewport,
@@ -61,7 +60,7 @@ flicker, jank, layout shift, hydration mismatch
 
 ### File-path triggers
 
-```
+```text
 src/components/, src/pages/, src/app/, src/routes/, src/views/,
 src/features/, src/screens/, src/ui/, src/widgets/, src/layouts/,
 *.tsx,*.jsx, *.vue,*.svelte, *.astro,*.mdx,
@@ -72,7 +71,7 @@ next.config.*, vite.config.*, tailwind.config.*, postcss.config.*
 
 ### Task-description triggers
 
-```
+```text
 frontend, frontend bug, FE bug, web app, website, site,
 landing page, dashboard, UI, UX, view, screen,
 component, page, form, modal, dialog, sidebar, navbar, header, footer
@@ -129,6 +128,8 @@ The dev-server auto-detect algorithm is documented in the
 The `<timestamp>` placeholder is an ISO-8601 UTC string
 (`date -u +%Y%m%dT%H%M%SZ`) — use it consistently across Steps 2,
 3, and 5 so artifacts can be cross-referenced.
+
+Each browser_qa/screenshot run writes a manifest at `<artifact-dir>/manifest.json` with timestamps and surface IDs; the artifact manifest referenced in Step 5 and edge cases is this file.
 
 ### Step 3 — Reproduce / understand
 
@@ -411,6 +412,7 @@ evidence + user approval. No silent skipping.
 
 For skips requiring `ask_user_question`:
 
+<!-- This is a description of the ask_user_question call, not runnable syntax. The actual tool takes question, options array, multiSelect, etc. -->
 ```
 ask_user_question(
   question: "Skip browser verification because <reason>?"
