@@ -260,13 +260,16 @@ Prefer the cheapest adequate tool:
 - `read_symbol` over `read` over `module_report` — prefer narrowest tool.
 - For non-code files (md/JSON/YAML/config): `read` with `limit=N` directly — `module_report`/`read_symbol` only work on code files.
 
-## Frontend Work
+## Frontend Work — Browser Loop Required
 
-- `browser_qa` for structured visual QA across viewports.
-- `browser_screenshot` with `annotate=true` for layout, styling, visual correctness.
-- `browser_debug` for console, network, React tree, Web Vitals.
-- `browser_snapshot` for interaction (click/fill) and accessibility only.
-- Verification order: screenshot first, check visually, debug if off.
+For any frontend work (UI, UX, layout, styling, hydration, visual bugs,
+browser-based testing, or edits to components/pages/styles), load skill
+`fe-browser-loop` and follow it. The skill enforces a 5-step
+open→baseline→repro→edit→verify loop with systematic case derivation and
+user-waivered skip rules. Do not declare a frontend task complete without
+either browser verification passing or an explicit user waiver recorded
+in the report. Frontend keywords and file-path triggers are listed in the
+skill description; if any fire, load the skill.
 
 ## Model Calibration
 
