@@ -304,3 +304,15 @@ Pi exposes canonical tools for every code-exploration task. Use them. Use `bash`
 - Test empirically: when a failure mode repeats, add a targeted guard to this file rather than rely on in-session memory.
 - Review after 5 tasks: read the post-task reflections; codify recurring patterns as new rules.
 - Known risk for smaller / flash-class models: they may skip the silent reasoning protocol and lean on `grep` / `find`. The TDD gate, todo tool, and canonical-tools section exist as structural compensating controls — rely on these gates, not on model discipline.
+
+## Fabric `fabric_exec` tool preference
+
+Inside `fabric_exec` (full code mode) the canonical-tools preference above applies through the `extensions.*` surface — the only path to the code-intelligence tools:
+
+- `extensions.context` — broad discovery
+- `extensions.explore` — source-level follow-up with relationships
+- `extensions.ffgrep` / `extensions.fffind` — literal searches
+- `extensions.read_symbol` / `extensions.read_enclosing` / `extensions.module_report` — exact bodies
+- `extensions.lens_diagnostics` — LSP + project diagnostics after edits
+
+Fall back to `pi.grep`/`pi.find` only when no extension is registered; reserve `pi.bash` for builds, git, network, and scripts — never `bash` `grep`/`find`.
