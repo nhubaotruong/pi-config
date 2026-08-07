@@ -3,7 +3,7 @@
   "model": "mimo-v2.5-free",
   "maxDimension": 1568,
   "jpegQuality": 85,
-  "defaultReasoningEffort": "high",
+  "defaultReasoningEffort": "low",
   "enabled": true,
   "cacheEnabled": true,
   "cachePersist": true,

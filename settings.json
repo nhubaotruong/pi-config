@@ -45,7 +45,7 @@
   "quietStartup": true,
   "enableInstallTelemetry": false,
   "defaultProjectTrust": "always",
-  "defaultThinkingLevel": "high",
+  "defaultThinkingLevel": "medium",
   "defaultProvider": "opencode",
   "defaultModel": "deepseek-v4-flash-free",
   "hideThinkingBlock": true,
