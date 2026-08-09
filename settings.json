@@ -31,14 +31,15 @@
     "npm:pi-context-mode-injection-filter",
     "npm:pi-reasonix",
     "npm:@juicesharp/rpiv-advisor",
-    "npm:@raquezha/noheadroom",
     "npm:pi-fabric",
-    "npm:@getpipher/vision"
+    "npm:@getpipher/vision",
+    "npm:@piex-dev/dap",
+    "npm:pi-speeed"
   ],
   "extensions": [
     "extensions/compact-at-200k.ts"
   ],
-  "lastChangelogVersion": "0.83.0",
+  "lastChangelogVersion": "0.84.1",
   "theme": "dark",
   "showHardwareCursor": true,
   "outputPad": 0,
@@ -46,8 +47,8 @@
   "enableInstallTelemetry": false,
   "defaultProjectTrust": "always",
   "defaultThinkingLevel": "medium",
-  "defaultProvider": "opencode",
-  "defaultModel": "deepseek-v4-flash-free",
+  "defaultProvider": "minimax",
+  "defaultModel": "MiniMax-M3",
   "hideThinkingBlock": true,
   "editorPaddingX": 1,
   "compaction": {
@@ -55,5 +56,6 @@
     "reserveTokens": 16384,
     "keepRecentTokens": 64000
   },
-  "showCacheMissNotices": false
+  "showCacheMissNotices": false,
+  "tuiMode": "fullscreen"
 }
