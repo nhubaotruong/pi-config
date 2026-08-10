@@ -43,12 +43,14 @@ For an unfamiliar library, or when unsure of an API's exact behavior: `resolve-l
 ### Git conventions
 
 - Stage and commit deliberately: file names, never `git add .` / `-A` / `-u`. No force-push, rebase, or `git reset --hard` unless asked.
-- Conventional commits: `feat(scope):`, `fix(scope):`, ≤72 chars, present tense. Subagents do not commit unless asked.
+- Conventional commits: `feat(scope):`, `fix(scope):`, ≤72 chars, present tense. Fabric agents do not commit unless asked.
 
-### Subagents and background terminals
+### Fabric agents and background terminals
 
-- `Agent` for work needing 3+ tool calls or context isolation; `bg_start` for long-lived processes (they receive no stdin).
-- Background agents/terminals auto-report — never poll. Tasks touching the same files go in one agent; different agents must never touch the same files concurrently.
+- **"Subagent spawn" means "fabric agent"**: spawn children via `agents.spawn({ task })` inside `fabric_exec` — omit `tools` so the agent inherits the parent's full tool set (all tools allowed by default; never restrict `tools`); wait via `agents.wait({ id })`, inspect via `agents.status({ id })`, redirect via `agents.steer`, stop via `agents.stop`. `agents.spawn()` auto-reports on completion (no polling).
+- `agents.run({ task })` when the result is needed inline; `agents.spawn({ task })` for fire-and-forget work needing 3+ tool calls or context isolation. `bg_start` for long-lived processes (they receive no stdin).
+- **Do NOT specify a model on agent spawn** unless the user explicitly asks for one — omit `model` so the harness picks its default; passing a model is treated as scope creep.
+- Never poll — fabric agents and background terminals auto-report. Tasks touching the same files go in one agent; different agents must never touch the same files concurrently.
 - Verify an agent's work by checking the actual diff, not its summary.
 
 ## Capability-Conditional Guidance

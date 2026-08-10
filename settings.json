@@ -37,7 +37,8 @@
     "npm:pi-speeed"
   ],
   "extensions": [
-    "extensions/compact-at-200k.ts"
+    "extensions/compact-at-200k.ts",
+    "extensions/pi-fabric-hashline-bridge.ts"
   ],
   "lastChangelogVersion": "0.84.1",
   "theme": "dark",

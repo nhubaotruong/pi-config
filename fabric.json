@@ -10,10 +10,7 @@
   },
   "capture": {
     "keepVisible": [
-      "fabric_exec",
-      "advisor",
-      "ask_user_question",
-      "describe_image"
+      "fabric_exec"
     ]
   }
 }
