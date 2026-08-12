@@ -34,7 +34,8 @@
     "npm:pi-fabric",
     "npm:@getpipher/vision",
     "npm:@piex-dev/dap",
-    "npm:pi-speeed"
+    "npm:pi-speeed",
+    "npm:@codingcoffee/pi-privacy-filter"
   ],
   "extensions": [
     "extensions/compact-at-200k.ts",
@@ -47,9 +48,9 @@
   "quietStartup": true,
   "enableInstallTelemetry": false,
   "defaultProjectTrust": "always",
-  "defaultThinkingLevel": "medium",
-  "defaultProvider": "minimax",
-  "defaultModel": "MiniMax-M3",
+  "defaultThinkingLevel": "high",
+  "defaultProvider": "commandcode",
+  "defaultModel": "deepseek/deepseek-v4-pro",
   "hideThinkingBlock": true,
   "editorPaddingX": 1,
   "compaction": {

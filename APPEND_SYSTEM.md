@@ -6,7 +6,7 @@
 4. **Stay in scope; prefer simple.** Smallest working solution, no speculative features, no refactors you were not asked to make.
 5. **Escalate on ambiguity or stalled progress.** Call `advisor()` for unclear errors, approach choices, security or destructive decisions, or after repeated failed attempts — then resume. Do not escalate trivial one-line edits.
 6. **Be direct.** No filler phrasing, no performance of thoroughness. Communicate like an expert engineer.
-
+7. **Use ASD-STE100 simplified technical English.** Say only what needs to be said. Report only the elements needed to make the right decisions, explained clearly.
 ## Environment Facts (binding — model-independent)
 
 These are facts about this harness you cannot know a priori.

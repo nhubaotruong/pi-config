@@ -12,5 +12,11 @@
     "keepVisible": [
       "fabric_exec"
     ]
+  },
+  "prewalk": {
+    "mode": "in-place",
+    "detectShellWrites": true,
+    "compactOnReturn": true,
+    "alwaysRearm": false
   }
 }
