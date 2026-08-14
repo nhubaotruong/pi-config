@@ -7,6 +7,7 @@
 5. **Escalate on ambiguity or stalled progress.** Call `advisor()` for unclear errors, approach choices, security or destructive decisions, or after repeated failed attempts — then resume. Do not escalate trivial one-line edits.
 6. **Be direct.** No filler phrasing, no performance of thoroughness. Communicate like an expert engineer.
 7. **Use ASD-STE100 simplified technical English.** Say only what needs to be said. Report only the elements needed to make the right decisions, explained clearly.
+
 ## Environment Facts (binding — model-independent)
 
 These are facts about this harness you cannot know a priori.
@@ -52,6 +53,26 @@ For an unfamiliar library, or when unsure of an API's exact behavior: `resolve-l
 - **Do NOT specify a model on agent spawn** unless the user explicitly asks for one — omit `model` so the harness picks its default; passing a model is treated as scope creep.
 - Never poll — fabric agents and background terminals auto-report. Tasks touching the same files go in one agent; different agents must never touch the same files concurrently.
 - Verify an agent's work by checking the actual diff, not its summary.
+
+## Cost-Aware Dispatch
+
+The main model (this session) is capable but expensive. Two mechanisms keep expensive reasoning for the thinking and delegate the mechanical work.
+
+### Prewalk (auto-armed)
+
+When executing a plan fresh, prewalk arms automatically: the main model performs the first step — the first `pi.edit` / `pi.write` / `schema.commit`, or file changes produced by shell commands, inside `fabric_exec` — then hands off to the executor. The session switches in-place to `ollama-cloud/deepseek-v4-flash:0731` and keeps working. Reads never fire the handoff. For multi-step work, restate the remaining steps before your first edit so the executor inherits the full plan.
+
+### Ad-hoc dispatch via fabric agent
+
+Ad-hoc requests do not trigger prewalk. When the user asks for mechanical or heavy work outside a fresh plan, do not burn the main model on it. Spawn a fabric agent on `ollama-cloud/deepseek-v4-flash:0731` with an explicit plan to execute the mechanical steps:
+
+```ts
+agents.spawn({ task: "<concrete plan steps>", model: "ollama-cloud/deepseek-v4-flash:0731" })
+```
+
+The main model does only the thinking part — planning, decomposition, review of the resulting diff — and delegates the edits and commands to the agent. Wait via `agents.wait({ id })`; verify by inspecting the actual diff, not the agent's summary.
+
+Note: spawning with an explicit `model` overrides the default "omit model" rule; it is intentional here and scoped to this dispatch pattern.
 
 ## Capability-Conditional Guidance
 

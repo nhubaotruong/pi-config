@@ -184,7 +184,16 @@ class PromptSearchComponent implements Container {
 		this.input = new Input();
 		this.input.onSubmit = () => {
 			if (this.filtered.length > 0) {
-				this.done(this.filtered[this.selected]?.text ?? null);
+				const text = this.filtered[this.selected]?.text ?? null;
+				if (text !== null) {
+					// Set the editor text before closing the overlay so that the
+					// render scheduled by done() picks up the new text. Otherwise
+					// the next render fires from a process.nextTick that runs
+					// before our post-await microtask, leaving the editor visually
+					// stale until the user types a character.
+					this.ctx.ui.setEditorText(text);
+				}
+				this.done(text);
 			}
 		};
 		this.input.onEscape = () => {
@@ -511,9 +520,6 @@ export default function (pi: ExtensionAPI) {
 					},
 				},
 			);
-			if (result !== null) {
-				ctx.ui.setEditorText(result);
-			}
 		},
 	});
 }

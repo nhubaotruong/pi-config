@@ -2,7 +2,7 @@
   "configVersion": 3,
   "executor": {
     "timeoutMs": 600000,
-    "memoryLimitBytes": 4294967296,
+    "memoryLimitBytes": 4294967295,
     "maxOutputChars": 100000
   },
   "mcp": {
@@ -11,12 +11,24 @@
   "capture": {
     "keepVisible": [
       "fabric_exec"
-    ]
+    ],
+    "advisory": {
+      "threshold": 0.9
+    }
   },
   "prewalk": {
     "mode": "in-place",
     "detectShellWrites": true,
     "compactOnReturn": true,
-    "alwaysRearm": false
+    "alwaysRearm": true,
+    "thinking": "",
+    "model": "ollama-cloud/deepseek-v4-flash:0731"
+  },
+  "mesh": {
+    "actorScope": "project"
+  },
+  "agents": {
+    "transport": "process",
+    "thinking": "high"
   }
 }

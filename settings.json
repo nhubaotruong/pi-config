@@ -1,7 +1,6 @@
 {
   "packages": [
     "npm:@ff-labs/pi-fff",
-    "npm:pi-mcp-adapter",
     "npm:pi-lens",
     "npm:pi-agent-browser-native",
     "npm:cc-safety-net",
@@ -24,7 +23,6 @@
     "npm:pi-commandcode-provider",
     "npm:pi-extension-nvidia-nim",
     "npm:@realvendex/pi-token-router",
-    "npm:pi-hashline-edit-pro",
     "npm:@llblab/pi-telegram",
     "npm:pi-rtk-optimizer",
     "npm:@juicesharp/rpiv-btw",
@@ -34,12 +32,10 @@
     "npm:pi-fabric",
     "npm:@getpipher/vision",
     "npm:@piex-dev/dap",
-    "npm:pi-speeed",
-    "npm:@codingcoffee/pi-privacy-filter"
+    "npm:pi-speeed"
   ],
   "extensions": [
-    "extensions/compact-at-200k.ts",
-    "extensions/pi-fabric-hashline-bridge.ts"
+    "extensions/compact-at-200k.ts"
   ],
   "lastChangelogVersion": "0.84.1",
   "theme": "dark",
@@ -49,8 +45,8 @@
   "enableInstallTelemetry": false,
   "defaultProjectTrust": "always",
   "defaultThinkingLevel": "high",
-  "defaultProvider": "commandcode",
-  "defaultModel": "deepseek/deepseek-v4-pro",
+  "defaultProvider": "ollama-cloud",
+  "defaultModel": "glm-5.2",
   "hideThinkingBlock": true,
   "editorPaddingX": 1,
   "compaction": {
