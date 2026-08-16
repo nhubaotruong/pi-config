@@ -1,21 +1,29 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import {
-	type Container,
+	Container,
+	VStack,
 	Input,
-	truncateToWidth,
-	visibleWidth,
+	SelectList,
+	Text,
 	matchesKey,
 	Key,
-	wrapTextWithAnsi,
+	truncateToWidth,
+	visibleWidth,
+	type Component,
+	type SelectItem,
+	type SelectListTheme,
 } from "@earendil-works/pi-tui";
 
 /**
  * PromptSearch - Ctrl+R triggered prompt history search UI
  * Toggle scope with Ctrl+S (this project vs all sessions)
  *
- * Renders as a bordered box replacing the input area.
- * Left column: scrollable list of prompts.
- * Right column: full preview of selected prompt.
+ * Rendered as a native pi overlay (80% width, 80% height, bottom-center):
+ * - Box border around the dialog, ├┤ separators between sections
+ * - Left pane (60%): SelectList of prompts (label = first line, description = relative time)
+ * - Right pane (40%): full preview of the selected prompt, │ divider between panes
+ * - Bottom: native Input for live substring filtering
+ * - Header shows scope + match count; footer shows keybindings
  */
 
 interface HistoryEntry {
@@ -27,7 +35,6 @@ interface HistoryEntry {
 }
 
 type Scope = "project" | "all";
-const MAX_LIST_ITEMS = 16;
 
 function extractUserText(content: any): string {
 	if (typeof content === "string") return content;
@@ -142,63 +149,150 @@ async function loadAllSessions(ctx: any): Promise<HistoryEntry[]> {
 	return entries.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
 }
 
-class PromptSearchComponent implements Container {
+function relativeTime(date: Date): string {
+	const sec = Math.floor((Date.now() - date.getTime()) / 1000);
+	if (sec < 60) return `${sec}s`;
+	if (sec < 3600) return `${Math.floor(sec / 60)}m`;
+	if (sec < 86400) return `${Math.floor(sec / 3600)}h`;
+	return `${Math.floor(sec / 86400)}d`;
+}
+
+/**
+ * Full box border around a stack of sections, with ├┤ separators between
+ * sections. Every rendered line is padded to the inner width so the right
+ * border column stays aligned (visibleWidth handles ANSI codes).
+ */
+class BoxBorder implements Component {
+	private children: Component[];
+	private border: (s: string) => string;
+
+	constructor(children: Component[], border: (s: string) => string) {
+		this.children = children;
+		this.border = border;
+	}
+
+	invalidate(): void {
+		for (const child of this.children) child.invalidate?.();
+	}
+
+	render(width: number): string[] {
+		const innerW = Math.max(1, width - 2);
+		const lines: string[] = [];
+		lines.push(this.border(`┌${"─".repeat(innerW)}┐`));
+		for (let i = 0; i < this.children.length; i++) {
+			const childLines = this.children[i].render(innerW);
+			for (const line of childLines) {
+				const pad = Math.max(0, innerW - visibleWidth(line));
+				lines.push(this.border("│") + line + " ".repeat(pad) + this.border("│"));
+			}
+			if (i < this.children.length - 1) {
+				lines.push(this.border(`├${"─".repeat(innerW)}┤`));
+			}
+		}
+		lines.push(this.border(`└${"─".repeat(innerW)}┘`));
+		return lines;
+	}
+}
+
+/**
+ * Two panes at an exact 60:40 split with a │ divider between them,
+ * padded to exactly N rows. Left child renders at 60% of the inner
+ * width, right child at 40%; the divider column and right edge stay
+ * aligned regardless of HStack grow rounding.
+ */
+class TwoPaneBody implements Component {
+	private left: Component;
+	private right: Component;
+	private rows: number;
+	private border: (s: string) => string;
+
+	constructor(
+		left: Component,
+		right: Component,
+		rows: number,
+		border: (s: string) => string,
+	) {
+		this.left = left;
+		this.right = right;
+		this.rows = rows;
+		this.border = border;
+	}
+
+	invalidate(): void {
+		this.left.invalidate?.();
+		this.right.invalidate?.();
+	}
+
+	render(width: number): string[] {
+		const innerW = Math.max(2, width);
+		const listW = Math.floor(innerW * 0.6);
+		const prevW = innerW - listW - 1;
+		const leftLines = this.left.render(listW);
+		const rightLines = this.right.render(prevW);
+		const out: string[] = [];
+		for (let i = 0; i < this.rows; i++) {
+			const l = leftLines[i] ?? "";
+			const r = rightLines[i] ?? "";
+			const lPad = Math.max(0, listW - visibleWidth(l));
+			const rPad = Math.max(0, prevW - visibleWidth(r));
+			out.push(l + " ".repeat(lPad) + this.border("│") + r + " ".repeat(rPad));
+		}
+		return out;
+	}
+}
+
+class PromptSearchComponent {
+	private root!: BoxBorder;
+	private listHost = new Container();
+	private selectList!: SelectList;
+	private previewLabel = new Text("", 1, 0);
+	private previewText = new Text("", 1, 0);
+	private headerText = new Text("", 1, 0);
+	private footerText = new Text("", 1, 0);
+	private input = new Input();
+
 	private entries: HistoryEntry[] = [];
 	private filtered: HistoryEntry[] = [];
 	private selected = 0;
-	private projectCwd: string;
-
-	private rerender(): void {
-		this.cachedL = undefined;
-		this.requestRender();
-	}
 	private filterText = "";
 	private scope: Scope = "project";
 	private loading = false;
-	private input: Input;
+	private projectCwd: string;
+	private maxVisible: number;
+	private bodyRows: number;
+
 	private done: (value: string | null) => void;
 	private requestRender: () => void;
-	private cachedW?: number;
-	private cachedL?: string[];
 	private theme: any;
 	private ctx: any;
+	private keybindings: any;
 	private tui: any;
 
 	constructor(
 		initialEntries: HistoryEntry[],
 		theme: any,
 		ctx: any,
+		keybindings: any,
 		done: (value: string | null) => void,
 		requestRender: () => void,
 		tui: any,
 	) {
 		this.entries = initialEntries;
-		this.filtered = [...initialEntries];
 		this.theme = theme;
 		this.ctx = ctx;
+		this.keybindings = keybindings;
 		this.done = done;
 		this.requestRender = requestRender;
-		this.tui = tui;
 		this.projectCwd = ctx.cwd || process.cwd();
+		this.tui = tui;
 
-		this.input = new Input();
-		this.input.onSubmit = () => {
-			if (this.filtered.length > 0) {
-				const text = this.filtered[this.selected]?.text ?? null;
-				if (text !== null) {
-					// Set the editor text before closing the overlay so that the
-					// render scheduled by done() picks up the new text. Otherwise
-					// the next render fires from a process.nextTick that runs
-					// before our post-await microtask, leaving the editor visually
-					// stale until the user types a character.
-					this.ctx.ui.setEditorText(text);
-				}
-				this.done(text);
-			}
-		};
-		this.input.onEscape = () => {
-			this.done(null);
-		};
+		// Height budget: dialog covers 80% of the terminal height.
+		// Chrome = top border + header + separator + input + separator + footer + bottom border (8 rows).
+		const termRows = tui?.terminal?.rows ?? 40;
+		this.bodyRows = Math.max(4, Math.floor(termRows * 0.8) - 8);
+		this.maxVisible = Math.max(3, this.bodyRows - 1);
+
+		this.build();
 	}
 
 	get focused(): boolean {
@@ -208,40 +302,126 @@ class PromptSearchComponent implements Container {
 		this.input.focused = value;
 	}
 
-	/**
-	 * Highlight search term in text with accent color
-	 */
+	private build(): void {
+		const border = (s: string) => this.theme.fg("accent", s);
+
+		// Two-pane body: list (60%) + │ divider + preview (40%), fills the height
+		const body = new TwoPaneBody(
+			this.listHost,
+			this.buildPreviewPane(),
+			this.bodyRows,
+			border,
+		);
+
+		this.root = new BoxBorder(
+			[this.headerText, body, this.input, this.footerText],
+			border,
+		);
+
+		this.rebuildList();
+		this.updateHeader();
+		this.updateFooter();
+	}
+
+	private buildPreviewPane(): VStack {
+		this.previewLabel.setText(this.theme.fg("dim", "Preview"));
+		this.previewText.setText("");
+		return new VStack([this.previewLabel, this.previewText]);
+	}
+
+	private selectListTheme(): SelectListTheme {
+		return {
+			selectedPrefix: (text) => this.theme.fg("accent", text),
+			selectedText: (text) => this.theme.fg("accent", text),
+			description: (text) => this.theme.fg("dim", text),
+			scrollInfo: (text) => this.theme.fg("dim", text),
+			noMatch: (text) => this.theme.fg("dim", text),
+		};
+	}
+
 	private highlightMatch(text: string): string {
 		if (!this.filterText) return text;
-		const q = this.filterText.toLowerCase();
-		const idx = text.toLowerCase().indexOf(q);
+		const idx = text.toLowerCase().indexOf(this.filterText.toLowerCase());
 		if (idx === -1) return text;
 		const before = text.slice(0, idx);
-		const match = text.slice(idx, idx + q.length);
-		const after = text.slice(idx + q.length);
+		const match = text.slice(idx, idx + this.filterText.length);
+		const after = text.slice(idx + this.filterText.length);
 		return `${before}${this.theme.fg("accent", match)}${after}`;
 	}
 
-	/**
-	 * Split the full text of an entry into wrapped lines fitting the given width.
-	 */
-	private buildDetailLines(text: string, width: number): string[] {
-		if (width < 4) return [truncateToWidth(text, width)];
-		const rawLines = text.split("\n");
-		const out: string[] = [];
-		for (const line of rawLines) {
-			if (line === "") {
-				out.push(" ".repeat(width));
-			} else {
-				const wrapped = wrapTextWithAnsi(line, width);
-				for (const wl of wrapped) {
-					out.push(truncateToWidth(wl, width));
-					if (out.length >= 80) break;
-				}
-			}
-			if (out.length >= 80) break;
+	private rebuildList(): void {
+		const needle = this.filterText.toLowerCase();
+		this.filtered = needle
+			? this.entries.filter((e) => e.text.toLowerCase().includes(needle))
+			: this.entries;
+
+		const items: SelectItem[] = this.filtered.map((e) => ({
+			value: e.text,
+			label: e.text.split("\n")[0],
+			description: relativeTime(e.timestamp),
+		}));
+
+		const list = new SelectList(items, this.maxVisible, this.selectListTheme(), {
+			minPrimaryColumnWidth: 24,
+			maxPrimaryColumnWidth: 80,
+			truncatePrimary: ({ text, maxWidth }) =>
+				truncateToWidth(this.highlightMatch(text), maxWidth, ""),
+		});
+
+		list.onSelect = (item) => {
+			// Set the editor text before closing the overlay so that the
+			// render scheduled by done() picks up the new text.
+			this.ctx.ui.setEditorText(item.value);
+			this.done(item.value);
+		};
+		list.onCancel = () => this.done(null);
+		list.onSelectionChange = (item) => {
+			const idx = this.filtered.findIndex((e) => e.text === item.value);
+			if (idx !== -1) this.selected = idx;
+			this.updatePreview();
+		};
+
+		if (items.length > 0) {
+			list.setSelectedIndex(
+				Math.max(0, Math.min(this.selected, items.length - 1)),
+			);
 		}
-		return out;
+
+		this.listHost.clear();
+		this.listHost.addChild(list);
+		this.selectList = list;
+		this.updatePreview();
+	}
+
+	private updatePreview(): void {
+		const item = this.selectList.getSelectedItem();
+		if (!item) {
+			this.previewText.setText("");
+			return;
+		}
+		this.previewText.setText(item.value);
+	}
+
+	private updateHeader(): void {
+		const scopeLabel = this.scope === "project" ? "this project" : "all sessions";
+		const loadHint = this.loading ? " loading…" : "";
+		const title = this.theme.fg("accent", this.theme.bold("Prompt History"));
+		const meta = this.theme.fg(
+			"dim",
+			` · ${scopeLabel} · ${this.filtered.length} matches${loadHint}`,
+		);
+		this.headerText.setText(title + meta);
+	}
+
+	private updateFooter(): void {
+		const scopeHint =
+			this.scope === "project" ? "Ctrl+S → all sessions" : "Ctrl+S → this project";
+		this.footerText.setText(
+			this.theme.fg(
+				"dim",
+				`↑↓ navigate · Enter select · Esc cancel · ${scopeHint}`,
+			),
+		);
 	}
 
 	handleInput(data: string): void {
@@ -251,237 +431,105 @@ class PromptSearchComponent implements Container {
 			return;
 		}
 
-		// Page navigation
+		// Page navigation (SelectList has no native page keys)
 		if (matchesKey(data, Key.pageUp)) {
-			this.selected = Math.max(0, this.selected - MAX_LIST_ITEMS);
-			this.rerender();
+			this.page(-this.maxVisible);
 			return;
 		}
 		if (matchesKey(data, Key.pageDown)) {
-			this.selected = Math.min(
-				this.filtered.length - 1,
-				this.selected + MAX_LIST_ITEMS,
-			);
-			this.rerender();
+			this.page(this.maxVisible);
 			return;
 		}
 
-		// Let Input process the key
+		// Selection navigation / confirm / cancel → SelectList
+		if (
+			this.keybindings.matches(data, "tui.select.up") ||
+			this.keybindings.matches(data, "tui.select.down") ||
+			this.keybindings.matches(data, "tui.select.confirm") ||
+			this.keybindings.matches(data, "tui.select.cancel")
+		) {
+			this.selectList.handleInput(data);
+			this.requestRender();
+			return;
+		}
+
+		// Text editing → native Input; on change, refilter
 		const oldVal = this.input.getValue();
 		this.input.handleInput(data);
-		const newVal = this.input.getValue();
-
-		// If text changed, re-filter
-		if (oldVal !== newVal) {
-			this.filterText = newVal;
-			this.applyFilter();
-			this.refreshList();
-			return;
-		}
-
-		// Navigation (Input doesn't handle these)
-		if (matchesKey(data, Key.up)) {
-			if (this.selected > 0) {
-				this.selected--;
-				this.rerender();
-			}
-		} else if (matchesKey(data, Key.down)) {
-			if (this.selected < this.filtered.length - 1) {
-				this.selected++;
-				this.rerender();
-			}
+		if (this.input.getValue() !== oldVal) {
+			this.filterText = this.input.getValue();
+			this.rebuildList();
+			this.updateHeader();
+			this.requestRender();
 		}
 	}
 
-	private async toggleScope() {
+	private page(delta: number): void {
+		if (this.filtered.length === 0) return;
+		const target = Math.max(
+			0,
+			Math.min(this.filtered.length - 1, this.selected + delta),
+		);
+		this.selected = target;
+		this.selectList.setSelectedIndex(target);
+		this.updatePreview();
+		this.requestRender();
+	}
+
+	private async toggleScope(): Promise<void> {
+		if (this.loading) return;
+
 		const newScope: Scope = this.scope === "project" ? "all" : "project";
 		this.scope = newScope;
-		this.rerender();
 
 		if (newScope === "all") {
 			const onlyProject = this.entries.every((e) => e.cwd === this.projectCwd);
 			if (onlyProject) {
 				this.loading = true;
-				this.rerender();
+				this.updateHeader();
+				this.requestRender();
 				this.entries = await loadAllSessions(this.ctx);
 				this.loading = false;
 			}
 		} else {
 			// Switching back to project scope - reload project sessions
 			this.loading = true;
-			this.rerender();
+			this.updateHeader();
+			this.requestRender();
 			this.entries = await loadProjectSessions(this.ctx);
 			this.loading = false;
 		}
-		this.applyFilter();
-		this.rerender();
+
+		this.rebuildList();
+		this.updateHeader();
+		this.updateFooter();
+		this.requestRender();
 	}
 
-	private refreshList(): void {
-		this.applyFilter();
-		this.rerender();
-	}
-
-	private applyFilter(): void {
-		let source = this.entries;
-
-		if (this.scope === "project") {
-			source = this.entries.filter((e) => e.cwd === this.projectCwd);
-		}
-
-		if (this.filterText === "") {
-			this.filtered = [...source];
-		} else {
-			const q = this.filterText.toLowerCase();
-			this.filtered = source.filter((e) => e.text.toLowerCase().includes(q));
-		}
-
-		if (this.selected >= this.filtered.length) {
-			this.selected = Math.max(0, this.filtered.length - 1);
-		}
+	/**
+	 * Recompute the height budget from the current terminal size so the
+	 * visible item count follows the terminal height instead of being fixed
+	 * at open time. Width is already dynamic (the 60:40 HStack reallocates
+	 * on every render). Rebuilds the box only when the size actually changed.
+	 */
+	private syncSize(): void {
+		const termRows = this.tui?.terminal?.rows ?? 40;
+		const bodyRows = Math.max(4, Math.floor(termRows * 0.8) - 8);
+		const maxVisible = Math.max(3, bodyRows - 1);
+		if (bodyRows === this.bodyRows && maxVisible === this.maxVisible) return;
+		this.bodyRows = bodyRows;
+		this.maxVisible = maxVisible;
+		this.build();
 	}
 
 	render(width: number): string[] {
-		if (this.cachedW === width && this.cachedL) return this.cachedL;
-
-		const lines: string[] = [];
-		const w = width;
-
-		// Calculate heights
-		const termRows = this.tui?.terminal?.rows ?? 40;
-		const maxOverlayRows = Math.floor(termRows * 0.5);
-		const totalRows = Math.min(20, maxOverlayRows);
-		const contentRows = totalRows - 4; // header + 2 separators + footer
-
-		// Layout: left list + right preview
-		// Outer box: │ content │ = w, so content = w - 2
-		// List: │ left │ = leftW + 2, Preview: │ preview │ = previewW + 2
-		const showPreview = w >= 60;
-		// Content row: │ + leftW + │ + previewW + │ = w  =>  leftW + previewW = w - 2
-		const leftW = showPreview ? Math.floor((w - 2) / 2) : w - 2;
-		const previewW = showPreview ? w - 2 - leftW : 0;
-
-		// Header
-		const scopeLabel =
-			this.scope === "project" ? "this project" : "all sessions";
-		const loadHint = this.loading ? " loading..." : "";
-		const headerText = ` Search prompts · ${scopeLabel}${loadHint} `;
-		lines.push(
-			`┌${headerText}${"─".repeat(Math.max(0, w - headerText.length - 2))}┐`,
-		);
-
-		// Calculate visible items
-		const maxVis = Math.min(MAX_LIST_ITEMS, this.filtered.length, contentRows);
-		const start = Math.max(
-			0,
-			Math.min(
-				this.selected - Math.floor(maxVis / 2),
-				Math.max(0, this.filtered.length - maxVis),
-			),
-		);
-
-		// Build preview content
-		const selectedEntry = this.filtered[this.selected];
-		let previewLines: string[] = [];
-		if (selectedEntry && previewW > 4) {
-			previewLines = this.buildDetailLines(selectedEntry.text, previewW);
-		}
-
-		// Render content rows
-		for (let i = 0; i < contentRows; i++) {
-			const idx = start + i;
-
-			// Left side: list
-			let leftPart: string;
-			if (idx < this.filtered.length) {
-				const entry = this.filtered[idx];
-				const sel = idx === this.selected;
-				const ago = this.relativeTime(entry.timestamp);
-				const firstLine = entry.text.split("\n")[0];
-				const availW = Math.max(1, leftW - 10);
-				const displayText = truncateToWidth(firstLine, availW);
-				const highlighted = this.highlightMatch(displayText);
-
-				if (sel) {
-					leftPart = ` ${this.theme.fg("accent", "▶")} ${highlighted} ${this.theme.fg("dim", ago)}`;
-				} else {
-					leftPart = `   ${highlighted} ${this.theme.fg("dim", ago)}`;
-				}
-			} else {
-				leftPart = "";
-			}
-			// Pad using visibleWidth to handle ANSI codes correctly
-			leftPart =
-				leftPart + " ".repeat(Math.max(0, leftW - visibleWidth(leftPart)));
-
-			if (showPreview) {
-				// Right side: preview box
-				if (i === 0) {
-					const previewHeader = " Preview ";
-					const previewInnerW = previewW - 2; // -2 for ┌ and ┐
-					const dashes = "─".repeat(
-						Math.max(0, previewInnerW - previewHeader.length),
-					);
-					lines.push(`│${leftPart}│┌${previewHeader}${dashes}┐`);
-				} else if (i === contentRows - 1) {
-					const previewInnerW = previewW - 2; // -2 for └ and ┘
-					lines.push(`│${leftPart}│└${"─".repeat(previewInnerW)}┘`);
-				} else {
-					const previewIdx = i - 1;
-					const previewInnerW = previewW - 1; // right │ only, left │ shared with list
-					let previewText =
-						previewIdx < previewLines.length
-							? truncateToWidth(previewLines[previewIdx], previewInnerW)
-							: " ".repeat(previewInnerW);
-					// Pad to exact width for border alignment
-					previewText =
-						previewText +
-						" ".repeat(Math.max(0, previewInnerW - visibleWidth(previewText)));
-					lines.push(`│${leftPart}│${previewText}│`);
-				}
-			} else {
-				lines.push(`│${leftPart}│`);
-			}
-		}
-
-		// Separator
-		lines.push(`├${"─".repeat(w - 2)}┤`);
-
-		// Input line
-		const inputValue = this.input.getValue();
-		const inputDisplay = inputValue ? truncateToWidth(inputValue, w - 5) : "";
-		const inputLine = `│ > ${inputDisplay}${" ".repeat(Math.max(0, w - 5 - visibleWidth(inputDisplay)))}│`;
-		lines.push(inputLine);
-
-		// Footer
-		const footerText = ` ↑↓ navigate · Enter select · Esc cancel · Ctrl+S ${this.scope === "project" ? "→ all" : "→ this project"} `;
-		lines.push(
-			`├${footerText}${"─".repeat(Math.max(0, w - footerText.length - 2))}┤`,
-		);
-		lines.push(`└${"─".repeat(w - 2)}┘`);
-
-		this.cachedW = width;
-		this.cachedL = lines;
-		return lines;
-	}
-
-	private relativeTime(date: Date): string {
-		const sec = Math.floor((Date.now() - date.getTime()) / 1000);
-		if (sec < 60) return `${sec}s`;
-		if (sec < 3600) return `${Math.floor(sec / 60)}m`;
-		if (sec < 86400) return `${Math.floor(sec / 3600)}h`;
-		return `${Math.floor(sec / 86400)}d`;
+		this.syncSize();
+		return this.root.render(width);
 	}
 
 	invalidate(): void {
-		this.cachedW = undefined;
-		this.cachedL = undefined;
-		this.input.invalidate();
+		this.root.invalidate();
 	}
-
-	addChild(_child: any): void {}
-	removeChild(_child: any): void {}
-	clear(): void {}
 }
 
 export default function (pi: ExtensionAPI) {
@@ -494,12 +542,13 @@ export default function (pi: ExtensionAPI) {
 			const entries = await loadProjectSessions(ctx);
 
 			// Always show dialog, even if empty
-			const result = await ctx.ui.custom<string | null>(
-				(tui, theme, _kb, done) => {
+			await ctx.ui.custom<string | null>(
+				(tui, theme, keybindings, done) => {
 					const component = new PromptSearchComponent(
 						entries,
 						theme,
 						ctx,
+						keybindings,
 						done,
 						() => tui.requestRender(),
 						tui,
@@ -508,6 +557,12 @@ export default function (pi: ExtensionAPI) {
 						render: (w) => component.render(w),
 						invalidate: () => component.invalidate(),
 						handleInput: (data) => component.handleInput(data),
+						get focused() {
+							return component.focused;
+						},
+						set focused(v: boolean) {
+							component.focused = v;
+						},
 					};
 				},
 				{
@@ -515,7 +570,7 @@ export default function (pi: ExtensionAPI) {
 					overlayOptions: {
 						anchor: "bottom-center",
 						width: "80%",
-						maxHeight: "50%",
+						maxHeight: "80%",
 						margin: { bottom: 1 },
 					},
 				},
