@@ -32,12 +32,10 @@
     "npm:pi-fabric",
     "npm:@getpipher/vision",
     "npm:@piex-dev/dap",
-    "npm:pi-speeed"
+    "npm:pi-speeed",
+    "npm:@agnishc/edb-auto-name-session"
   ],
-  "extensions": [
-    "extensions/compact-at-200k.ts"
-  ],
-  "lastChangelogVersion": "0.84.1",
+  "lastChangelogVersion": "0.84.2",
   "theme": "dark",
   "showHardwareCursor": true,
   "outputPad": 0,
@@ -46,7 +44,7 @@
   "defaultProjectTrust": "always",
   "defaultThinkingLevel": "high",
   "defaultProvider": "ollama-cloud",
-  "defaultModel": "glm-5.2",
+  "defaultModel": "kimi-k2.7-code",
   "hideThinkingBlock": true,
   "editorPaddingX": 1,
   "compaction": {

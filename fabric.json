@@ -13,7 +13,12 @@
       "fabric_exec"
     ],
     "advisory": {
-      "threshold": 0.9
+      "threshold": 0.6,
+      "maxPerSession": 10
+    },
+    "hideFromModel": true,
+    "risks": {
+      "edit": "write"
     }
   },
   "prewalk": {
@@ -30,5 +35,19 @@
   "agents": {
     "transport": "process",
     "thinking": "high"
+  },
+  "fullCodeMode": true,
+  "ui": {
+    "toolDisplay": "compact"
+  },
+  "compaction": {
+    "thresholds": {
+      "ollama-cloud/deepseek-v4-flash:0731": null,
+      "ollama-cloud/kimi-k2.7-code": null
+    },
+    "tokenThresholds": {
+      "ollama-cloud/deepseek-v4-flash:0731": 192000,
+      "ollama-cloud/kimi-k2.7-code": 192000
+    }
   }
 }
