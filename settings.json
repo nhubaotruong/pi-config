@@ -42,9 +42,9 @@
   "quietStartup": true,
   "enableInstallTelemetry": false,
   "defaultProjectTrust": "always",
-  "defaultThinkingLevel": "high",
+  "defaultThinkingLevel": "xhigh",
   "defaultProvider": "ollama-cloud",
-  "defaultModel": "kimi-k2.7-code",
+  "defaultModel": "deepseek-v4-flash:0731",
   "hideThinkingBlock": true,
   "editorPaddingX": 1,
   "compaction": {

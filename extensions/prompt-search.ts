@@ -381,8 +381,13 @@ export default function (pi: ExtensionAPI) {
 		handler: async (ctx) => {
 			if (ctx.mode !== "tui") return;
 
-			await ctx.ui.custom<string | null>(
+			// setEditorText() updates editor state without re-rendering, and
+			// custom()'s close path renders the pre-search text, so capture the
+			// TUI handle and force a render after applying the selected prompt.
+			let requestRender: (() => void) | undefined;
+			const text = await ctx.ui.custom<string | null>(
 				(tui, theme, keybindings, done) => {
+					requestRender = () => tui.requestRender();
 					const currentLoader = async (
 						onProgress?: (loaded: number, total: number) => void,
 					) => {
@@ -403,14 +408,7 @@ export default function (pi: ExtensionAPI) {
 						allLoader as any,
 						(sessionPath: string) => {
 							const entry = pathToEntry.get(sessionPath);
-							if (entry) {
-								// Set the editor text before closing so the render
-								// scheduled by done() picks up the new text.
-								ctx.ui.setEditorText(entry.text);
-								done(entry.text);
-							} else {
-								done(null);
-							}
+							done(entry?.text ?? null);
 						},
 						() => done(null),
 						() => done(null),
@@ -429,6 +427,12 @@ export default function (pi: ExtensionAPI) {
 				},
 				// No overlay: renders like /resume (component replaces the editor).
 			);
+			if (text) {
+				ctx.ui.setEditorText(text);
+				// setEditorText() doesn't re-render; the close path already
+				// rendered the pre-search text, so refresh to show the prompt.
+				requestRender?.();
+			}
 		},
 	});
 }
