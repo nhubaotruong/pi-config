@@ -11,6 +11,10 @@ description: |
   systematic case derivation across 9 dimensions and user-waivered
   skip rules. Skip only with explicit user override or when no
   live URL exists.
+  Visual evidence (screenshots, layout, rendered-vs-accessibility-tree
+  comparison) is delegated to a dedicated vision-capable agent
+  (ollama-cloud/kimi-k2.7-code, xhigh thinking) defined in this skill.
+  Every pass also hunts UI/UX edge cases, glitches, and visual bugs.
 ---
 
 # fe-browser-loop
@@ -359,7 +363,8 @@ For each generated case:
        ✓ browser_errors: zero NEW page errors
        ✓ browser_network: zero NEW 4xx/5xx (or expected 2xx)
        ✓ browser_snapshot: expected text/ref present
-       ✓ browser_screenshot: visual sanity for layout/visual tasks
+       ✓ browser_screenshot: visual check via the vision verification
+         agent (see "Vision verification agent" below) for layout/visual tasks
        ✓ browser_eval (sparingly): computed style / state value when needed
   5. Record: case name, interaction trace, assertion results
 
@@ -390,6 +395,133 @@ E. Open fresh session (browser_close + browser_open) for state-leak bugs
 - Skill outputs a final verify report (see "Report format" below)
 - SHOULDs and NICEs may be waived per §Skip-override rules;
   un-waivered SHOULDs block PASS verdict
+
+## Vision verification agent (dedicated)
+
+Visual evidence — screenshots, layout, rendered-vs-accessibility-tree
+comparison — cannot be judged by the main text-only model. For any
+Step 5 case whose assertions include visual checks (D5 viewports,
+D7 a11y tree, layout/UI-polish tasks), delegate the visual pass to
+the dedicated vision agent instead of guessing from snapshots.
+
+### Spawn (fixed parameters)
+
+```ts
+const result = await agents.run({
+  name: "fe-browser-loop-verifier",
+  model: "ollama-cloud/kimi-k2.7-code", // vision-capable
+  thinking: "xhigh",
+  extensions: true, // captured pi-browser tools are extension tools
+  // omit `tools` — inherits the parent's full tool set (pi-browser included)
+  // no systemPrompt param on agents.run — embed the persona (below) at the
+  // top of the task string, then the verification task itself
+  task: `${VISION_VERIFIER_PROMPT}\n\nVerification task:\n<url, cases, expected behavior, report format>`,
+});
+```
+
+Use `agents.run` (blocking) when the loop needs the findings inline;
+`agents.spawn` + `agents.wait` for background passes. Never change
+model or thinking — vision + xhigh reasoning are the point.
+
+### Persona — prepend to every task (no systemPrompt param)
+
+`agents.run` / `agents.spawn` accept no `systemPrompt` — the persona
+below is embedded at the top of the `task` string, followed by the
+concrete verification task. Copy it verbatim:
+
+```text
+You are a frontend verification engineer with vision, working as the
+visual-evidence engine of the fe-browser-loop. You verify web UIs
+through real user behavior in a browser.
+
+Tools (pi-browser, called as extensions.* inside fabric_exec):
+- browser_qa: one-command visual QA — screenshots at desktop/tablet/mobile, console errors, network 4xx/5xx, vitals.
+- browser_snapshot: accessibility tree with stable element refs (@refs).
+- browser_open / browser_click / browser_fill / browser_press / browser_back / browser_forward / browser_reload / browser_tabs / browser_close: behavioral interaction.
+- browser_screenshot: targeted screenshots (optionally annotated).
+- browser_set_viewport: responsive checks.
+- browser_console / browser_errors / browser_network / browser_vitals / browser_debug: diagnostics.
+- browser_eval / browser_read / browser_wait: page inspection and synchronization.
+
+Workflow for every verification task:
+1. Open the URL (or reuse the session) and capture a browser_qa pass: screenshots at desktop/tablet/mobile, console errors, network failures, vitals.
+2. Take a browser_snapshot to get the accessibility tree with stable refs.
+3. Act like a user: click buttons, open menus, submit forms, navigate — verify each interaction's visible result in a screenshot. Re-snapshot after every page change to get fresh refs.
+4. Compare rendered screenshots against the accessibility tree: every visible interactive element must exist in the tree with a sensible role/name; every tree element must be visible and usable. Flag mismatches (missing labels, invisible focus targets, elements not in the tree, broken states).
+5. Check console/network/vitals for errors introduced by the interactions.
+6. Report findings as a ranked list: severity, element (role/name/ref), what was done, what was observed (screenshot evidence), expected vs actual, reproduction steps. Do not edit code — verify and report only.
+```
+
+### Integration with the loop
+
+- The main agent keeps loop discipline: case derivation (5.1–5.3),
+  waivers, and the final verdict. The vision agent executes the
+  visual/behavioral cases and returns evidence.
+- Feed the agent's findings into the 5.4 assertions and the report
+  ("Vision" line below).
+- The agent cannot see this conversation — the task string must be
+  self-contained: persona (above) + URL, cases, expected behavior,
+  report format in one string.
+- Browser sessions persist per worktree; pass the same `session` to
+  browser tools to keep state across calls.
+- If the target app is local, start the dev server first (see
+  Dev-server auto-detect) and pass the local URL.
+
+## UI/UX bug hunting (edge cases & glitches)
+
+Verification is not just "does the change work" — actively hunt for
+UI/UX defects on every frontend task. Treat the app as a hostile user
+would: break it, stress it, look at it from every viewport. This runs
+in parallel with Step 5 case verification; findings are bugs, not just
+pass/fail assertions.
+
+### What to hunt (checklist)
+
+### Visual glitches
+
+- flicker / jank / layout shift (CLS) on load, navigation, data change
+- misaligned, overlapping, or clipped elements; text cut off or
+  overflowing without ellipsis
+- broken images / icons, wrong aspect ratios, blurry assets
+- inconsistent spacing, borders, shadows, radii across states
+- hover / focus / active / visited / disabled state styling missing or
+  broken; transitions that jump or never settle
+
+### State & edge cases
+
+- empty / loading / error / success states for every data surface
+- boundary inputs (D1), rapid-fire clicks, double-submit, race
+  conditions, back/forward/reload mid-flow
+- stale UI after data change; optimistic updates that never reconcile
+- long content, unicode / RTL / CJK, zoom 200%, prefers-reduced-motion
+
+### Interaction bugs
+
+- dead clicks (element looks clickable but does nothing)
+- missing feedback (no hover, no press state, no toast/error)
+- focus loss, scroll traps, sticky-header overlap, modal/tooltip
+  mispositioning, z-index fights
+
+### Responsive glitches
+
+- horizontal scroll, squished or stretched layouts, broken grids
+- touch targets < 44px, hover-only interactions on touch
+- breakpoint jumps, content hidden at a viewport with no alternative
+
+### How to hunt
+
+- **Visual hunt → vision agent.** Spawn `fe-browser-loop-verifier`
+  (see "Vision verification agent" above) with a glitch-hunting task:
+  screenshots at every viewport, hover/focus/active states, common
+  flows, and a ranked list of visual defects with screenshot evidence.
+- **Logic/state hunt → main agent.** browser_snapshot + console/
+  network deltas across the D1/D2/D4/D6 cases; assert every state
+  renders something sensible.
+- Every finding is a bug report: severity, element (role/name/ref),
+  viewport, reproduction steps, screenshot evidence. Feed into the
+  report's "UI/UX findings" section.
+- A found UI/UX bug blocks the PASS verdict like any failed case;
+  fix it in Step 4 and re-verify.
 
 ## Skip-override rules
 
@@ -442,6 +574,11 @@ Consistency:
 
 Console delta: <+N new errors, 0 expected>
 Network delta:  <+N new 4xx/5xx, expected <M>>
+Vision:         <n>/<n> visual checks passed (screenshots, layout, a11y tree)
+
+UI/UX findings:
+  [SEV] <element>: <bug> @ <viewport> — <repro> (evidence: <artifact>)
+  ...
 
 Waivers:
   S2: dev server unreachable — user approved

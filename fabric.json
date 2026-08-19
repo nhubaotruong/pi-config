@@ -34,7 +34,7 @@
   },
   "agents": {
     "transport": "process",
-    "thinking": "high"
+    "thinking": "xhigh"
   },
   "fullCodeMode": true,
   "ui": {

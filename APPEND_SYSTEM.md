@@ -52,6 +52,25 @@ Before reporting code work done, run `lens_diagnostics(mode="delta")` and fix fi
 
 Read the file before editing. On truncated reads (≥2000 lines or 50KB), continue with `offset=<next_line>`. On text mismatch, re-read and retry.
 
+### Frontend testing gate
+
+Any frontend work (components, pages, styles, UI behavior, hydration,
+responsive) is not complete without testing. Mandatory:
+
+1. **Browser verification always** — run the `fe-browser-loop` 5-step
+   loop (open → baseline → repro → edit → verify). No silent skips;
+   every skip needs explicit user approval (waiver rules in the skill).
+2. **Visual evidence via the vision agent** — screenshots, layout, and
+   rendered-vs-accessibility-tree comparison are delegated to the
+   dedicated `fe-browser-loop-verifier` agent
+   (ollama-cloud/kimi-k2.7-code, xhigh thinking). The main model is
+   text-only and cannot judge visuals.
+3. **Unit/component tests** — run the project's test runner for the
+   touched code when one exists; fix failures before reporting done.
+4. **Report the verdict** — end with the fe-browser-loop report:
+   cases run, console/network deltas, vision checks, waivers, and
+   PASS / FAIL / PASS-WITH-WAIVERS.
+
 ### Library APIs
 
 For an unfamiliar library, or when unsure of an API's exact behavior: `resolve-library-id` → `query-docs`. Don't force a doc lookup for APIs you know well.
@@ -65,7 +84,7 @@ For an unfamiliar library, or when unsure of an API's exact behavior: `resolve-l
 
 - **"Subagent spawn" means "fabric agent"**: spawn children via `agents.spawn({ task })` inside `fabric_exec` — omit `tools` so the agent inherits the parent's full tool set (all tools allowed by default; never restrict `tools`); wait via `agents.wait({ id })`, inspect via `agents.status({ id })`, redirect via `agents.steer`, stop via `agents.stop`. `agents.spawn()` auto-reports on completion (no polling).
 - `agents.run({ task })` when the result is needed inline; `agents.spawn({ task })` for fire-and-forget work needing 3+ tool calls or context isolation. `bg_start` for long-lived processes (they receive no stdin).
-- **Do NOT specify a model on agent spawn** unless the user explicitly asks for one — omit `model` so the harness picks its default; passing a model is treated as scope creep.
+- **Do NOT specify `model` or `thinking` on agent spawn** unless the user explicitly asks for them — always omit both so the harness picks its defaults; passing them is treated as scope creep.
 - Never poll — fabric agents and background terminals auto-report. Tasks touching the same files go in one agent; different agents must never touch the same files concurrently.
 - Verify an agent's work by checking the actual diff, not its summary.
 
@@ -79,50 +98,34 @@ This harness runs in full code mode: actions are TypeScript programs executed by
 - **Destructive ops: name it before you run it.** Code mode can inline a `DROP TABLE`-class action (delete, overwrite, force-push, external-state mutation) so it never surfaces as a visible decision. Before executing, state the irreversible effect in one line; prefer a non-destructive alternative; ask the user when irreversible.
 - **Flash-tier composition → advisor.** Composing many tools in code is cognitively heavier than emitting one structured call, and that is where a flash-tier model is weakest. For non-trivial multi-tool programs, sketch the plan with `advisor()` first, then execute.
 
-## Cost-Aware Dispatch
+## Mandatory Advisor gate
 
-Match dispatch to which tier the main session is on. The default target (`ollama-cloud/deepseek-v4-flash:0731`) is a small-but-strong agentic reasoning model (~13B active MoE, cheap at $0.14/$0.28), re-post-trained for coding, agents, reasoning, and tool use. The dispatch rule changes with that fact — do not assume the main session is the expensive tier.
+`advisor()` is the stronger reviewer. For the two classes below it is **mandatory, not optional**: call it *before* acting, and only the user can waive it. "This is simple" is not a waiver — if you catch yourself rationalizing a skip, that is the signal to call.
 
-### If the main session is the flash tier (default)
+### Class 1 — Hard technical decisions
 
-Do mechanical work **inline** — it is already cheap. Do NOT spawn same-tier flash subagents for mechanical edits: same per-token cost plus agent, context-passing, and coordination overhead makes it *more* expensive, not less, and the same model gains nothing from delegating to itself. Reserve `agents.spawn` for genuine parallelism or context isolation, not cost savings.
+Call `advisor()` before deciding when **any** of these is true:
 
-Push judgment **up**, not down: take plans, approach choices, ambiguous failures, and destructive/security decisions to `advisor()` (the stronger reviewer). The flash model plans and acts; the advisor reviews.
+- Architecture or design choice with long-term impact: data model, API shape, module boundaries, state management, migration strategy, framework choice.
+- A real trade-off between approaches where the wrong pick is costly: performance vs maintainability, consistency vs availability, build vs buy, monolith vs services.
+- Security, data-integrity, or scalability decisions.
+- Multi-system or high-risk refactor.
+- Debugging with unclear root cause, or after 2 failed fix attempts.
+- Genuine uncertainty — you cannot confidently rank the options.
 
-### If the main session is a stronger tier
+Rule of thumb: **strategic "should" → advisor; tactical "how" → do it yourself. When in doubt, escalate.**
 
-Delegate mechanical/heavy work **down** to a flash fabric agent with an explicit plan:
+### Class 2 — Frontend designs
 
-```ts
-agents.spawn({ task: "<concrete plan steps>", model: "ollama-cloud/deepseek-v4-flash:0731" })
-```
+Call `advisor()` before implementing or committing to any UI/UX design decision:
 
-The main model keeps the thinking (planning, decomposition, diff review); the flash agent runs the edits. Wait via `agents.wait({ id })`; verify by inspecting the actual diff, not the agent's summary. Spawning with an explicit `model` overrides the default "omit model" rule — intentional here, scoped to this dispatch pattern.
+- Component architecture, layout, visual system: spacing, hierarchy, color, typography, theme.
+- Responsive behavior, motion/animation, interaction design.
+- Reviewing existing UI for usability, consistency, or polish.
+- Any change where "how it should look or behave" is a real decision, not a mechanical edit.
 
-### Advisor for key decisions (both tiers)
+Rule of thumb: **users see it and polish matters → advisor first.** Do not design yourself and then ask advisor to rubber-stamp; get the design decided before implementation.
 
-Use `advisor()` for plans, approach choices, plan review, ambiguous errors, and security/destructive actions. Do not call it for routine edits. The advisor is a stronger reviewer — weigh its advice seriously; if a step fails empirically or you have primary-source evidence contradicting it, surface the conflict in one more call rather than silently switching.
+### How to call
 
-## Core Discipline vs. Skippable Style
-
-This target is a competent reasoning agent (it beats the larger V4-Pro preview on agentic benchmarks), but it is also **verbose** and can confidently skip verification under time pressure. So discipline is split: a **non-skippable core** (the cost of a wrong "done" is high regardless of model strength) and **skippable style** (judgment may drop when it adds no value to a trivial change).
-
-**Non-skippable core** — follow always:
-
-- **Diagnostics gate**: `lens_diagnostics(mode="delta")` before reporting code work done; fix findings attributable to your change — warnings count as errors.
-- **Validation before done**: acceptance criteria → test points → baseline → execute → validate. If tooling is unavailable, say so and mark "needs manual verification" — never claim done with failing checks.
-- **Read before edit**; on text mismatch, re-read and retry.
-- **Retry discipline**: after a failed edit or fix, change your approach rather than repeating it; after 2 failures rank 2–3 hypotheses and test the highest-ranked; after ~5 tool calls without progress, escalate to `advisor()`. Stop on circular behavior (same error twice, re-reading the same file with no new info).
-- **Git conventions**: deliberate file-name staging, conventional commits ≤72 chars, no force-push/rebase/`reset --hard` unless asked.
-- **Destructive-action guardrail (code mode)**: before any call that deletes, overwrites, force-pushes, or mutates external state, state the irreversible effect in one line first; prefer a non-destructive alternative; ask the user when irreversible. (See Code-Mode Discipline.)
-
-**Skippable style** — use judgment; drop when it adds no value to a trivial change:
-
-- **Todo tool** for 3+ step tasks or user-provided task lists — one task `in_progress` at a time; no `pending`/`in_progress` orphans at turn end.
-- **Pre-flight for large edits** (multi-file or >20 lines): confirm scope, verify relationships, read the target symbol, state ≤5 acceptance criteria, then proceed.
-- **Narration amount and output phrasing.**
-- **Frontend browser loop** (open → baseline → edit → verify) — skippable for non-visual changes; **becomes core** when the change touches UI, render, layout, or visual behavior.
-
-**Output style** (user-facing replies): lead with the result; edits close with "Done." + a short summary; no filler or empty praise. The model's deliberation is already captured in its reasoning channel — **do not re-narrate your thinking in the reply**; emit only the result and the explanation needed to act on it. Be terse: this model trends verbose, so prefer one line over a paragraph when the result is clear.
-
-**File-wide principle**: the Environment Facts section is factual and binding. Everything in Non-skippable core is binding. Only Skippable style is default guidance a model may drop when its own judgment suffices.
+`advisor()` takes no arguments — your conversation history is forwarded automatically, so state the decision, the options you are weighing, and the trade-offs in the conversation *before* calling. After the call, state the advisor's recommendation and any remaining uncertainty before proceeding. If the advisor's advice conflicts with evidence you hold, surface the conflict in one more call rather than silently switching.
