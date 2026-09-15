@@ -5,3 +5,5 @@ browser-artifacts
 context-prune
 auth.json
 node_modules/
+# Local Pi runtime state
+.atl/

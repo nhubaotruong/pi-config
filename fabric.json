@@ -1,5 +1,5 @@
 {
-  "configVersion": 3,
+  "configVersion": 4,
   "executor": {
     "timeoutMs": 600000,
     "memoryLimitBytes": 4294967295,
@@ -27,14 +27,15 @@
     "compactOnReturn": true,
     "alwaysRearm": false,
     "thinking": "xhigh",
-    "model": "ollama-cloud/deepseek-v4-flash:0731"
+    "model": "ollama-cloud/deepseek-v4.1-flash"
   },
   "mesh": {
     "actorScope": "project"
   },
   "agents": {
     "transport": "process",
-    "thinking": "xhigh"
+    "thinking": "xhigh",
+    "maxPerExecution": 500
   },
   "fullCodeMode": true,
   "ui": {
@@ -43,12 +44,12 @@
   "compaction": {
     "thresholds": {
       "ollama-cloud/deepseek-v4-flash:0731": null,
-      "ollama-cloud/kimi-k2.7-code": null,
+      "ollama-cloud/glm-5.3-flash": null,
       "ollama-cloud/glm-5.2": null
     },
     "tokenThresholds": {
       "ollama-cloud/deepseek-v4-flash:0731": 192000,
-      "ollama-cloud/kimi-k2.7-code": 192000,
+      "ollama-cloud/glm-5.3-flash": 192000,
       "ollama-cloud/glm-5.2": 192000
     }
   }

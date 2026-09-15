@@ -13,7 +13,7 @@ description: |
   live URL exists.
   Visual evidence (screenshots, layout, rendered-vs-accessibility-tree
   comparison) is delegated to a dedicated vision-capable agent
-  (ollama-cloud/kimi-k2.7-code, xhigh thinking) defined in this skill.
+  (ollama-cloud/deepseek-v4.1-flash, xhigh thinking) defined in this skill.
   Every pass also hunts UI/UX edge cases, glitches, and visual bugs.
 ---
 
@@ -409,7 +409,7 @@ the dedicated vision agent instead of guessing from snapshots.
 ```ts
 const result = await agents.run({
   name: "fe-browser-loop-verifier",
-  model: "ollama-cloud/kimi-k2.7-code", // vision-capable
+  model: "ollama-cloud/deepseek-v4.1-flash", // vision-capable
   thinking: "xhigh",
   extensions: true, // captured pi-browser tools are extension tools
   // omit `tools` — inherits the parent's full tool set (pi-browser included)
