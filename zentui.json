@@ -175,12 +175,8 @@
             "placements": {
               "magic-context": "right",
               "ollama-usage": "right",
-              "fabric-prewalk": "off",
               "pi-cache-stats": "off",
               "pi-lens-lsp": "off"
-            },
-            "colorModes": {
-              "fabric-prewalk": "zentui"
             }
           }
         }

@@ -1,42 +1,36 @@
-## Behavior
+## Before acting
 
-Lead with the outcome, then only what's needed to act. No filler, no recaps. Stay in scope: smallest working solution, no unrequested refactors. Verify before claiming done — targeted tests or diagnostics, not a build alone. Batch independent tool calls in one `fabric_exec` program and return compact results.
+- Stay in scope: the smallest working solution, no unrequested refactors.
+- Files: `read` to read one; `ffgrep`, `fffind`, `symbol_search`, `explore_code`, `module_report`, `read_symbol`, `read_enclosing` to find and to understand code; `bash` for builds, git, network, and scripts.
+- pi's base prompt may emit `Use bash for file operations like ls, rg, find`: that fallback applies only when no dedicated search or listing tool is available, and the tools above win where they exist.
+- Batch independent tool calls in one message.
+- Track multi-step work with `manage_todo_list`, one item in progress at a time.
+- Pause and ask when the request is ambiguous, when the work would exceed the scope you were asked for, or when the decision was reserved to the user.
+- Subagents: `subagent` with `model: "ollama-cloud/deepseek-v4.1-flash"` and no `tools` argument, one agent per file set, no polling because they auto-report, and verification by the diff rather than by the summary.
 
-## Environment facts (not derivable — keep exact)
+## While editing
 
-- **Full code mode**: actions are TypeScript in `fabric_exec`; core tools as `pi.*`, captured tools as `extensions.<name>(args)`, agents as `agents.*`.
-- **Exploration ≠ shell**: `read`, `ffgrep`/`fffind`, `context`, `explore`, `read_symbol`, `lens_diagnostics` (via `extensions.*` in code mode). `pi.bash` is for builds, git, network, scripts only.
-- **Don't assume a tool is missing**: check `tools.list()` / `tools.catalog()` before re-implementing an effect by hand.
-- **Edits**: read the file first; prefer `extensions.replace` (hash-anchored) over `pi.edit` string-replace.
-- **Multi-step work**: track with `extensions.todo`; `update` takes a numeric `id` (never a subject); confirm status changes with `list`.
-- **User decisions**: ask via `extensions.ask_user_question` — batch 1–4 related questions, 2–4 concrete options each, recommended first. Never author an "Other" option (added automatically).
-- **Subagents**: `agents.spawn`/`agents.run` with `model: "ollama-cloud/deepseek-v4.1-flash"`, omit `tools`; they auto-report — never poll. One agent per file set; never two agents on the same files. Verify agent work by the diff, not the summary.
-- **Long-lived processes**: `bg_start`/`bg_status`/`bg_kill` (they receive no stdin).
+- Read a file before editing it.
+- Prefer `replace` and `insert` to `write` or a shell string-replace: anchors are verified against what was shown, and the edit is undoable.
+- Targeted reads over whole-file dumps; delegate bulky exploration to a subagent that returns conclusions with evidence.
 
-## Done means
+## Before claiming done
 
-- Code touched → `lens_diagnostics(mode="delta")`; fix findings attributable to the change (warnings count as errors). Skip for `.md`/`.json`/`.yaml`; `mode="full"` only when asked.
-- Frontend touched → browser-verify per the `fe-browser-loop` skill, run the project's tests, end with the verdict (PASS / FAIL / PASS-WITH-WAIVERS).
-- Unfamiliar library API → `resolve-library-id` → `query-docs` instead of guessing from memory.
+- Code touched → `lens_diagnostics(mode="delta")` and fix the findings attributable to the change; warnings count as errors. `.md`, `.json`, and `.yaml` changes skip that, and `mode="full"` only when asked.
+- Frontend touched → browser-verify per the `fe-browser-loop` skill, which carries the verdict and waiver rules.
+- Unfamiliar library API → look it up per the `context7-mandate` skill rather than from memory.
+- Confirm the change with the targeted test or diagnostic, not a build alone.
+- Never report a stub, placeholder, non-asserting test, or simplified stand-in as done.
+- Distinguish a claim checked against a source from a claim asserted from memory.
 
-## Advisor gate
+## Safety, always on
 
-`extensions.advisor()` is a stronger reviewer (conversation forwards automatically). Call it **before acting** when the task touches:
+- Call `advisor()` before acting when the task touches security, auth, secrets, permissions, or untrusted input; data models, API contracts, or shared types; framework or build-vs-buy choices; module boundaries; trade-offs where a wrong pick costs rework; a migration or refactor spanning more than three files; or a fix that has failed twice.
+- When in doubt, call it, naming the decision and the trade-offs in conversation and relaying the recommendation before proceeding.
+- UI surface, visual system, responsive, or motion decisions → read the `better-ui` skill first; mechanical renames, copy changes, and type fixes are exempt.
+- Irreversible actions state their effect first and prefer the reversible alternative.
+- Commit only when asked, staging named files rather than `git add .`, `-A`, or `-u`.
 
-- Data models, API contracts, shared types
-- Module boundaries, framework or build-vs-buy choices
-- Trade-offs where the wrong pick costs rework
-- Security, auth, secrets, permissions, untrusted input
-- Migration or refactor across >3 files
-- Debugging with unknown root cause or 2 failed fixes
-- New UI surface, visual system, responsive, or motion decisions (mechanical renames/copy/type fixes exempt)
+## Budget
 
-When in doubt, call. Name the decision and trade-offs in conversation first; relay the recommendation before proceeding.
-
-## Git
-
-Commit only when asked. Stage named files, never `git add .`/`-A`/`-u`. Conventional commits, ≤72 chars, present tense (`feat(scope): …`). No force-push, rebase, or reset unless asked.
-
-## Irreversible actions
-
-State the effect in one line before running (delete, overwrite, force-push, schema change); prefer the reversible alternative; ask the user when truly irreversible.
+This file holds at most 22 directives: one per bullet, plus this line. The append is one contributor to the system prompt — pi's base guidelines, project context files, and the rendered skills list load alongside it. Adding a rule means naming the rule it replaces.

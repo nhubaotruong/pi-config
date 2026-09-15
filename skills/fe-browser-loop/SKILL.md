@@ -407,34 +407,30 @@ the dedicated vision agent instead of guessing from snapshots.
 ### Spawn (fixed parameters)
 
 ```ts
-const result = await agents.run({
-  name: "fe-browser-loop-verifier",
-  model: "ollama-cloud/deepseek-v4.1-flash", // vision-capable
-  thinking: "xhigh",
-  extensions: true, // captured pi-browser tools are extension tools
+subagent({
+  model: "ollama-cloud/deepseek-v4.1-flash:xhigh", // vision-capable + heavy reasoning
   // omit `tools` — inherits the parent's full tool set (pi-browser included)
-  // no systemPrompt param on agents.run — embed the persona (below) at the
-  // top of the task string, then the verification task itself
+  // no systemPrompt param — embed the persona (below) at the top of `task`
   task: `${VISION_VERIFIER_PROMPT}\n\nVerification task:\n<url, cases, expected behavior, report format>`,
-});
+})
 ```
 
-Use `agents.run` (blocking) when the loop needs the findings inline;
-`agents.spawn` + `agents.wait` for background passes. Never change
-model or thinking — vision + xhigh reasoning are the point.
+Use a blocking run (`async: false`) when the loop needs the findings inline;
+the default async run for background passes. Never change model or thinking —
+vision + xhigh reasoning are the point.
 
 ### Persona — prepend to every task (no systemPrompt param)
 
-`agents.run` / `agents.spawn` accept no `systemPrompt` — the persona
-below is embedded at the top of the `task` string, followed by the
-concrete verification task. Copy it verbatim:
+The `subagent` tool accepts no `systemPrompt` — the persona below is
+embedded at the top of the `task` string, followed by the concrete
+verification task. Copy it verbatim:
 
 ```text
 You are a frontend verification engineer with vision, working as the
 visual-evidence engine of the fe-browser-loop. You verify web UIs
 through real user behavior in a browser.
 
-Tools (pi-browser, called as extensions.* inside fabric_exec):
+Tools (call the browser_* tools directly):
 - browser_qa: one-command visual QA — screenshots at desktop/tablet/mobile, console errors, network 4xx/5xx, vitals.
 - browser_snapshot: accessibility tree with stable element refs (@refs).
 - browser_open / browser_click / browser_fill / browser_press / browser_back / browser_forward / browser_reload / browser_tabs / browser_close: behavioral interaction.

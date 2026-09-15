@@ -83,7 +83,7 @@
     }
   },
   "theme": "dark",
-  "tuiMode": "fullscreen",
+  "tuiMode": "regular",
   "terminal": {
     "clearOnShrink": true,
     "showTerminalProgress": true
