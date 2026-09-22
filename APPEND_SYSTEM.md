@@ -4,9 +4,10 @@
 - Files: `read` to read one; `ffgrep`, `fffind`, `symbol_search`, `explore_code`, `module_report`, `read_symbol`, `read_enclosing` to find and to understand code; `bash` for builds, git, network, and scripts.
 - pi's base prompt may emit `Use bash for file operations like ls, rg, find`: that fallback applies only when no dedicated search or listing tool is available, and the tools above win where they exist.
 - Batch independent tool calls in one message.
+- A long call may auto-background and deliver its result later: never poll for it (`sleep`/`ps`/`pgrep`/`top`/repeated `bg_status`); do other useful work or end your reply and the output arrives on its own.
 - Track multi-step work with `manage_todo_list`, one item in progress at a time.
 - Pause and ask when the request is ambiguous, when the work would exceed the scope you were asked for, or when the decision was reserved to the user.
-- Subagents: `subagent` with `model: "ollama-cloud/deepseek-v4.1-flash"` and no `tools` argument, one agent per file set, no polling because they auto-report, and verification by the diff rather than by the summary.
+- Subagents: `subagent` with `model: "ollama-cloud/deepseek-v4.1-flash"` and no `tools` argument, one agent per file set, verification by the diff rather than by the summary (they auto-report, so the no-polling rule above covers them).
 
 ## While editing
 
@@ -20,8 +21,7 @@
 - Frontend touched → browser-verify per the `fe-browser-loop` skill, which carries the verdict and waiver rules.
 - Unfamiliar library API → look it up per the `context7-mandate` skill rather than from memory.
 - Confirm the change with the targeted test or diagnostic, not a build alone.
-- Never report a stub, placeholder, non-asserting test, or simplified stand-in as done.
-- Distinguish a claim checked against a source from a claim asserted from memory.
+- Never report a stub, placeholder, non-asserting test, or simplified stand-in as done; distinguish a claim checked against a source from one asserted from memory.
 
 ## Safety, always on
 

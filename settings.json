@@ -42,7 +42,6 @@
     "https://github.com/ayghri/i-have-adhd",
     "npm:@raquezha/noheadroom",
     "npm:@ff-labs/pi-fff",
-    "npm:pi-zentui",
     "npm:pi-rtk-optimizer",
     "git:github.com/EveryInc/compound-engineering-plugin",
     "npm:pi-manage-todo-list",
@@ -83,7 +82,7 @@
     }
   },
   "theme": "dark",
-  "tuiMode": "regular",
+  "tuiMode": "fullscreen",
   "terminal": {
     "clearOnShrink": true,
     "showTerminalProgress": true
